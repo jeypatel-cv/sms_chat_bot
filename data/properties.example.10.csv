@@ -1,0 +1,11 @@
+property_id,property_name,street_address,city,state,zip,rent,bedrooms,bathrooms,availability_status,available_from,description,listing_id,contact_owner,notes
+VP-1001,Maple Ridge Apartments,123 Main St,Dallas,TX,75201,1850,2,2,available,2026-04-15,Modern two-bedroom apartment near downtown.,LST-1001,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1002,Cedar Park Lofts,45 Cedar Park Blvd,Plano,TX,75024,1625,1,1,available,2026-04-01,Bright loft-style unit with parking.,LST-1002,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1003,Lakeside Villas,88 Lakeview Dr,Irving,TX,75039,2195,3,2,occupied,2026-05-20,Family-friendly home with a community pool.,LST-1003,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1004,Northgate Residences,600 Northgate Ave,Arlington,TX,76011,1740,2,1,available,2026-04-22,Convenient access to shops and transit.,LST-1004,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1005,Sycamore Flats,19 Sycamore Ln,Richardson,TX,75080,2080,2,2,available,2026-04-10,Upgraded units with stainless appliances.,LST-1005,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1006,Hillside Commons,77 Hillcrest Rd,Frisco,TX,75034,2325,3,2,available,2026-04-18,Spacious home with a two-car garage.,LST-1006,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1007,Willow Bend Terrace,212 Willow Bend Pkwy,McKinney,TX,75070,1995,2,2,available,2026-04-08,Quiet community with pool and gym access.,LST-1007,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1008,Pine Crest Homes,340 Pine Crest Dr,Garland,TX,75040,1710,2,1,occupied,2026-05-01,Single-story home with fenced yard.,LST-1008,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1009,Brookstone Landing,908 Brookstone Blvd,Plano,TX,75023,2460,4,3,available,2026-04-25,Large family home close to schools.,LST-1009,leasing@vprealtyservices.com,Example row for Google Sheets
+VP-1010,River Walk Estates,501 River Walk Ln,Grand Prairie,TX,75052,1890,2,2,available,2026-04-12,Modern layout with river views and balcony.,LST-1010,leasing@vprealtyservices.com,Example row for Google Sheets

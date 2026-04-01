@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VP Realty SMS AI POC</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">VP Realty POC</p>
+        <h1>SMS AI Assistant Demo</h1>
+        <p class="lede">
+          Simulate a customer texting the official number and see an AI-style reply using dummy property data.
+        </p>
+      </div>
+      <div class="status-card">
+        <div><span>Mode</span><strong>Local demo</strong></div>
+        <div><span>Data</span><strong>Dummy properties</strong></div>
+        <div><span>Channel</span><strong>SMS simulator</strong></div>
+      </div>
+    </section>
+
+    <section class="content">
+      <div class="chat-panel">
+        <div class="panel-header">
+          <div>
+            <h2>Conversation</h2>
+            <p>Text the assistant as if you were a customer.</p>
+          </div>
+          <button id="resetBtn" class="ghost-btn">Reset chat</button>
+        </div>
+
+        <div class="controls">
+          <label>
+            Phone number
+            <input id="phoneInput" type="text" value="+1 214 555 0188" />
+          </label>
+          <label>
+            Customer message
+            <textarea id="messageInput" rows="3" placeholder="Try: Is 123 Main St available?"></textarea>
+          </label>
+          <button id="sendBtn" class="primary-btn">Send SMS</button>
+        </div>
+
+        <div id="chatLog" class="chat-log"></div>
+      </div>
+
+      <aside class="side-panel">
+        <div class="panel-card">
+          <h3>How it works</h3>
+          <ul>
+            <li>Dummy property data lives in the local JSON file.</li>
+            <li>The server finds the property, checks the intent, and crafts a reply.</li>
+            <li>If the customer is vague, it asks for an address or listing ID.</li>
+            <li>Human handoff is simulated by the responder logic.</li>
+          </ul>
+        </div>
+
+        <div class="panel-card">
+          <h3>Quick test prompts</h3>
+          <div class="prompt-list" id="promptList"></div>
+        </div>
+
+        <div class="panel-card">
+          <h3>Available properties</h3>
+          <div id="propertyList" class="property-list"></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

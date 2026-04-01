@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: vp-realty-sms-pilot
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python production_app.py
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.13.5
+      - key: HOST
+        value: 0.0.0.0
+      - key: GOOGLE_SHEET_TAB
+        value: Properties
+      - key: CACHE_TTL_SECONDS
+        value: "300"
+      - key: TWILIO_VALIDATE_REQUESTS
+        value: "true"
+      - key: TWILIO_ALLOW_MOCK
+        value: "false"

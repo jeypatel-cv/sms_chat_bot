@@ -1,0 +1,62 @@
+[
+  {
+    "property_id": "VP-1001",
+    "name": "Maple Ridge Apartments",
+    "address": "123 Main St, Dallas, TX 75201",
+    "rent_per_month": 1850,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "availability": "available",
+    "available_from": "2026-04-15",
+    "description": "Modern two-bedroom apartment near downtown.",
+    "contact_owner": "leasing@vprealtyservices.com"
+  },
+  {
+    "property_id": "VP-1002",
+    "name": "Cedar Park Lofts",
+    "address": "45 Cedar Park Blvd, Plano, TX 75024",
+    "rent_per_month": 1625,
+    "bedrooms": 1,
+    "bathrooms": 1,
+    "availability": "available",
+    "available_from": "2026-04-01",
+    "description": "Bright loft-style unit with parking.",
+    "contact_owner": "leasing@vprealtyservices.com"
+  },
+  {
+    "property_id": "VP-1003",
+    "name": "Lakeside Villas",
+    "address": "88 Lakeview Dr, Irving, TX 75039",
+    "rent_per_month": 2195,
+    "bedrooms": 3,
+    "bathrooms": 2,
+    "availability": "occupied",
+    "available_from": "2026-05-20",
+    "description": "Family-friendly home with a community pool.",
+    "contact_owner": "leasing@vprealtyservices.com"
+  },
+  {
+    "property_id": "VP-1004",
+    "name": "Northgate Residences",
+    "address": "600 Northgate Ave, Arlington, TX 76011",
+    "rent_per_month": 1740,
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "availability": "available",
+    "available_from": "2026-04-22",
+    "description": "Convenient access to shops and transit.",
+    "contact_owner": "leasing@vprealtyservices.com"
+  },
+  {
+    "property_id": "VP-1005",
+    "name": "Sycamore Flats",
+    "address": "19 Sycamore Ln, Richardson, TX 75080",
+    "rent_per_month": 2080,
+    "bedrooms": 2,
+    "bathrooms": 2,
+    "availability": "available",
+    "available_from": "2026-04-10",
+    "description": "Upgraded units with stainless appliances.",
+    "contact_owner": "leasing@vprealtyservices.com"
+  }
+]
