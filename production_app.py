@@ -433,6 +433,15 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _send_text(self, body_text: str, status: int = 200, content_type: str = "text/plain; charset=utf-8") -> None:
+        body = body_text.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
     def _send_xml(self, body_text: str, status: int = 200) -> None:
         body = body_text.encode("utf-8")
         self.send_response(status)
@@ -445,13 +454,30 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if parsed.path == "/healthz":
-            return self._send_json({"ok": True, "service": "vp-realty-sms-production"})
+            return self._send_text("ok")
         if parsed.path == "/":
-            return self._send_json(
-                {
-                    "service": "vp-realty-sms-production",
-                    "endpoints": ["/healthz", "/twilio/sms", "/demo/message", "/demo/history"],
-                }
+            return self._send_text(
+                """<html>
+  <head>
+    <title>VP Realty SMS Pilot</title>
+    <meta charset="utf-8" />
+    <style>
+      body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.5; }
+      code { background: #f2f2f2; padding: 2px 6px; border-radius: 4px; }
+      a { color: #0b66ff; }
+    </style>
+  </head>
+  <body>
+    <h1>VP Realty SMS Pilot</h1>
+    <p>The service is running.</p>
+    <ul>
+      <li><a href="/healthz">/healthz</a></li>
+      <li><a href="/demo">/demo</a></li>
+      <li><code>/twilio/sms</code> for inbound SMS webhooks</li>
+    </ul>
+  </body>
+</html>""",
+                content_type="text/html; charset=utf-8",
             )
         if parsed.path == "/demo":
             path = STATIC_DIR / "index.html"
