@@ -111,6 +111,8 @@ class PropertyRecord:
     availability: str
     available_from: str | None
     description: str = ""
+    manager_name: str = ""
+    manager_phone: str = ""
     contact_owner: str = ""
     listing_id: str = ""
 
@@ -131,6 +133,8 @@ class PropertyRecord:
             availability=str(row.get("availability_status", row.get("availability", ""))).strip(),
             available_from=str(row.get("available_from", "")).strip() or None,
             description=str(row.get("description", "")).strip(),
+            manager_name=str(row.get("manager_name", row.get("contact_owner", ""))).strip(),
+            manager_phone=str(row.get("manager_phone", row.get("contact_phone", ""))).strip(),
             contact_owner=str(row.get("contact_owner", "")).strip(),
             listing_id=str(row.get("listing_id", "")).strip(),
         )
@@ -310,7 +314,7 @@ class GoogleSheetsMessageLogger(MessageLogger):
         self.worksheet_name = worksheet_name
         self.credentials_file = credentials_file
         self.credentials_json = credentials_json
-        self.range_name = f"{worksheet_name}!A:J"
+        self.range_name = f"{worksheet_name}!A:I"
 
     def log(self, record: MessageLogRecord) -> dict[str, Any]:
         scopes = ["https://www.googleapis.com/auth/spreadsheets"]
@@ -449,6 +453,16 @@ class ConversationBrain:
         rooms = f"{bedrooms} bedrooms, {bathrooms} bathrooms"
         available_from = format_date(prop.available_from)
         availability = prop.availability or "unknown"
+        manager_name = prop.manager_name or prop.contact_owner or "the property manager"
+        manager_phone = prop.manager_phone.strip()
+
+        def manager_contact_reply() -> str:
+            if manager_phone:
+                return f"I’m not sure about that detail. Please contact {manager_name} at {manager_phone} for {prop.name}."
+            return (
+                f"I’m not sure about that detail. Please contact the leasing team for {prop.name} "
+                "for more help."
+            )
 
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
             return f"{prop.name} is available from {available_from}."
@@ -464,10 +478,7 @@ class ConversationBrain:
                 f"{rooms}, rent {rent} per month, and available from {available_from}."
             )
 
-        return (
-            f"{prop.name} at {prop.address} is {availability}. "
-            f"It has {rooms} and rent is {rent} per month."
-        )
+        return manager_contact_reply()
 
     def respond(self, phone: str, text: str) -> dict[str, Any]:
         session = self.get_session(phone)

@@ -9,6 +9,8 @@
     "availability": "available",
     "available_from": "2026-04-15",
     "description": "Modern two-bedroom apartment near downtown.",
+    "manager_name": "Sarah Khan",
+    "manager_phone": "+12145550101",
     "contact_owner": "leasing@vprealtyservices.com"
   },
   {
@@ -21,6 +23,8 @@
     "availability": "available",
     "available_from": "2026-04-01",
     "description": "Bright loft-style unit with parking.",
+    "manager_name": "Michael Chen",
+    "manager_phone": "+12145550102",
     "contact_owner": "leasing@vprealtyservices.com"
   },
   {
@@ -33,6 +37,8 @@
     "availability": "occupied",
     "available_from": "2026-05-20",
     "description": "Family-friendly home with a community pool.",
+    "manager_name": "Aisha Patel",
+    "manager_phone": "+12145550103",
     "contact_owner": "leasing@vprealtyservices.com"
   },
   {
@@ -45,6 +51,8 @@
     "availability": "available",
     "available_from": "2026-04-22",
     "description": "Convenient access to shops and transit.",
+    "manager_name": "David Wilson",
+    "manager_phone": "+12145550104",
     "contact_owner": "leasing@vprealtyservices.com"
   },
   {
@@ -57,6 +65,8 @@
     "availability": "available",
     "available_from": "2026-04-10",
     "description": "Upgraded units with stainless appliances.",
+    "manager_name": "Emily Johnson",
+    "manager_phone": "+12145550105",
     "contact_owner": "leasing@vprealtyservices.com"
   }
 ]
