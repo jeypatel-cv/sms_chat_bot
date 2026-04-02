@@ -238,7 +238,6 @@ class MessageLogRecord:
     property_id: str = ""
     intent: str = ""
     status: str = ""
-    message_sid: str = ""
     error: str = ""
 
 
@@ -264,7 +263,6 @@ class ConsoleMessageLogger(MessageLogger):
                     f"status={record.status}",
                     f"intent={record.intent}",
                     f"property_id={record.property_id or '-'}",
-                    f"sid={record.message_sid or '-'}",
                     f"text={record.message_text}",
                     f"error={record.error or '-'}",
                 ]
@@ -327,7 +325,6 @@ class GoogleSheetsMessageLogger(MessageLogger):
             record.property_id,
             record.intent,
             record.status,
-            record.message_sid,
             record.error,
         ]
         response = (
@@ -656,7 +653,6 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             form = parse_qs(raw)
             phone = (form.get("From", [""]) or [""])[0].strip()
             to_number = (form.get("To", [""]) or [""])[0].strip()
-            message_sid = (form.get("MessageSid", [""]) or [""])[0].strip()
             text = (form.get("Body", [""]) or [""])[0].strip()
             if not phone or not text:
                 return self._send_xml(self._twiml("Missing phone number or message."), status=400)
@@ -678,7 +674,6 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                     property_id=str(result.get("property_id", "")),
                     intent=str(result.get("intent", "")),
                     status="received",
-                    message_sid=message_sid,
                 )
             )
             try:
@@ -690,11 +685,11 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                         direction="outbound",
                         from_number=self.messenger.from_number or self.messenger.messaging_service_sid or "",
                         to_number=phone,
-                        message_text=result["reply"],
-                        property_id=str(result.get("property_id", "")),
-                        intent=str(result.get("intent", "")),
-                        status="error",
-                        error=str(exc),
+                    message_text=result["reply"],
+                    property_id=str(result.get("property_id", "")),
+                    intent=str(result.get("intent", "")),
+                    status="error",
+                    error=str(exc),
                     )
                 )
                 return self._send_xml(self._twiml(f"Twilio send failed: {exc}"), status=500)
@@ -710,7 +705,6 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                     property_id=str(result.get("property_id", "")),
                     intent=str(result.get("intent", "")),
                     status=str(outbound.get("status", "sent")),
-                    message_sid=str(outbound.get("sid", "")),
                 )
             )
             return self._send_xml(self._twiml(""))

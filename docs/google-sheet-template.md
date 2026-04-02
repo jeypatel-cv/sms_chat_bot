@@ -27,11 +27,10 @@ If you want to store inbound and outbound SMS records in the same spreadsheet, a
 
 This is optional and only used when `MESSAGE_LOG_TO_GOOGLE_SHEETS=true`.
 
-| timestamp | direction | from_number | to_number | message_text | property_id | intent | status | message_sid | error |
-|---|---|---|---|---|---|---|---|---|---|
+| timestamp | direction | from_number | to_number | message_text | property_id | intent | status | error |
+|---|---|---|---|---|---|---|---|---|
 
 Suggested values:
 - `direction`: `inbound` or `outbound`
 - `status`: `received`, `sent`, `mock`, or `error`
-- `message_sid`: Twilio message SID when available
 - `error`: blank for success, text when something fails
