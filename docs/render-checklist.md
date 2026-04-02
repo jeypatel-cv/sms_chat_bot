@@ -51,6 +51,8 @@ Add:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 - `GOOGLE_SHEET_TAB=Properties`
 - `GOOGLE_SHEET_LOG_TAB=MessageLogs`
+- `MESSAGE_LOG_TO_CONSOLE=true`
+- `MESSAGE_LOG_TO_GOOGLE_SHEETS=false`
 - `GOOGLE_APPLICATION_CREDENTIALS` if using a mounted JSON file
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` if you paste the service account JSON into Render secrets
 - `TWILIO_ACCOUNT_SID`
@@ -64,6 +66,10 @@ Then:
 1. Share the Google Sheet with the service account email.
 2. Point Twilio's inbound SMS webhook to `https://YOUR-RENDER-URL/twilio/sms`.
 3. Send one test SMS from a verified number.
+
+Note:
+- console logging is on by default
+- Google Sheets logging only turns on when `MESSAGE_LOG_TO_GOOGLE_SHEETS=true`
 
 ## Phase 3: Exact Production Setup Order
 
@@ -93,6 +99,8 @@ And add:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 - `GOOGLE_SHEET_TAB=Properties`
 - `GOOGLE_SHEET_LOG_TAB=MessageLogs`
+- `MESSAGE_LOG_TO_CONSOLE=true`
+- `MESSAGE_LOG_TO_GOOGLE_SHEETS=false`
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`
 
 ### Step 3: Share the Google Sheet

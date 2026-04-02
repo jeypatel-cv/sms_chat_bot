@@ -16,6 +16,10 @@ services:
         value: Properties
       - key: GOOGLE_SHEET_LOG_TAB
         value: MessageLogs
+      - key: MESSAGE_LOG_TO_CONSOLE
+        value: "true"
+      - key: MESSAGE_LOG_TO_GOOGLE_SHEETS
+        value: "false"
       - key: CACHE_TTL_SECONDS
         value: "300"
       - key: TWILIO_VALIDATE_REQUESTS

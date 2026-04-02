@@ -252,6 +252,42 @@ class NoopMessageLogger(MessageLogger):
         return {"status": "noop"}
 
 
+class ConsoleMessageLogger(MessageLogger):
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        print(
+            " | ".join(
+                [
+                    f"[{record.timestamp}]",
+                    record.direction,
+                    f"from={record.from_number}",
+                    f"to={record.to_number}",
+                    f"status={record.status}",
+                    f"intent={record.intent}",
+                    f"property_id={record.property_id or '-'}",
+                    f"sid={record.message_sid or '-'}",
+                    f"text={record.message_text}",
+                    f"error={record.error or '-'}",
+                ]
+            ),
+            flush=True,
+        )
+        return {"status": "printed"}
+
+
+class CompositeMessageLogger(MessageLogger):
+    def __init__(self, loggers: list[MessageLogger]):
+        self.loggers = loggers
+
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        results: list[dict[str, Any]] = []
+        for logger in self.loggers:
+            try:
+                results.append(logger.log(record))
+            except Exception as exc:
+                results.append({"status": "error", "error": str(exc)})
+        return {"status": "composite", "results": results}
+
+
 class JsonlMessageLogger(MessageLogger):
     def __init__(self, path: str):
         self.path = Path(path)
@@ -762,17 +798,18 @@ def build_store_from_env() -> PropertyStore:
 
 
 def build_message_logger_from_env() -> MessageLogger:
-    message_log_path = os.getenv("MESSAGE_LOG_PATH", "").strip()
-    if message_log_path:
-        return JsonlMessageLogger(message_log_path)
-
+    loggers: list[MessageLogger] = []
+    if truthy_env("MESSAGE_LOG_TO_CONSOLE", "true"):
+        loggers.append(ConsoleMessageLogger())
     sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip()
     worksheet_name = os.getenv("GOOGLE_SHEET_LOG_TAB", "MessageLogs").strip()
     credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
     credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
-    if sheet_id:
-        return GoogleSheetsMessageLogger(sheet_id, worksheet_name, credentials_file, credentials_json)
+    if sheet_id and truthy_env("MESSAGE_LOG_TO_GOOGLE_SHEETS", "false"):
+        loggers.append(GoogleSheetsMessageLogger(sheet_id, worksheet_name, credentials_file, credentials_json))
 
+    if loggers:
+        return CompositeMessageLogger(loggers)
     return NoopMessageLogger()
 
 
@@ -798,11 +835,11 @@ def main() -> None:
     handler_cls.security = security
     handler_cls.logger = logger
     server = ThreadingHTTPServer((args.host, args.port), handler_cls)
-    print(f"VP Realty production backend running at http://{args.host}:{args.port}")
+    print(f"ready {args.host}:{args.port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nShutting down.")
+        pass
     finally:
         server.server_close()
 
