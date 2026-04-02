@@ -40,12 +40,17 @@ Suggested smoke-test messages:
 
 After the smoke test works, switch the service to Google Sheets and Twilio.
 
+Before you do that:
+- rotate the Twilio auth token because it was shared in chat
+- store the new token only in Render environment variables
+
 Remove:
 - `PROPERTIES_CSV_PATH`
 
 Add:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 - `GOOGLE_SHEET_TAB=Properties`
+- `GOOGLE_SHEET_LOG_TAB=MessageLogs`
 - `GOOGLE_APPLICATION_CREDENTIALS` if using a mounted JSON file
 - `GOOGLE_APPLICATION_CREDENTIALS_JSON` if you paste the service account JSON into Render secrets
 - `TWILIO_ACCOUNT_SID`
@@ -57,8 +62,57 @@ Add:
 
 Then:
 1. Share the Google Sheet with the service account email.
-2. Point Twilio’s inbound SMS webhook to `https://YOUR-RENDER-URL/twilio/sms`.
+2. Point Twilio's inbound SMS webhook to `https://YOUR-RENDER-URL/twilio/sms`.
 3. Send one test SMS from a verified number.
+
+## Phase 3: Exact Production Setup Order
+
+Use this order when you are ready to connect live SMS and live property data.
+
+### Step 1: Rotate the Twilio token
+- Log into Twilio.
+- Generate a new auth token.
+- Treat the old token as invalid.
+
+### Step 2: Update Render secrets
+In Render, add or update:
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_FROM_NUMBER=+12142064345`
+- `PUBLIC_BASE_URL=https://vp-realty-sms-pilot.onrender.com`
+- `TWILIO_VALIDATE_REQUESTS=true`
+- `TWILIO_ALLOW_MOCK=false`
+
+If you are staying on CSV for one more test round, keep:
+- `PROPERTIES_CSV_PATH=data/properties.example.10.csv`
+
+If you are switching to Google Sheets now, remove:
+- `PROPERTIES_CSV_PATH`
+
+And add:
+- `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
+- `GOOGLE_SHEET_TAB=Properties`
+- `GOOGLE_SHEET_LOG_TAB=MessageLogs`
+- `GOOGLE_APPLICATION_CREDENTIALS_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`
+
+### Step 3: Share the Google Sheet
+- Share the sheet with the Google service account email that Render will use.
+- Give it Viewer access.
+
+### Step 4: Redeploy Render
+- Save the environment variables.
+- Trigger a redeploy if Render does not auto-deploy immediately.
+
+### Step 5: Update Twilio
+- Open the Twilio phone number settings.
+- Set the inbound SMS webhook to:
+  - `POST https://vp-realty-sms-pilot.onrender.com/twilio/sms`
+
+### Step 6: Test the live SMS flow
+- Text `123 Main St`
+- Text `45 Cedar Park`
+- Text `How much is rent?`
+- Text `Can I speak to a human?`
 
 ## What Good Looks Like
 
@@ -67,4 +121,3 @@ Then:
 - Twilio accepts the webhook
 - inbound SMS gets a reply
 - the reply matches the right property
-

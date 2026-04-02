@@ -84,6 +84,22 @@ def truthy_env(name: str, default: str = "true") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
 
 
+def build_google_credentials(scopes: list[str], credentials_file: str, credentials_json: str):
+    if Credentials is None or build is None:
+        raise RuntimeError(
+            "Google Sheets dependencies are not installed. "
+            "Install the packages in requirements.txt first."
+        )
+    if credentials_json:
+        return Credentials.from_service_account_info(json.loads(credentials_json), scopes=scopes)
+    if credentials_file and Path(credentials_file).exists():
+        return Credentials.from_service_account_file(credentials_file, scopes=scopes)
+    if google is None:
+        raise RuntimeError("google-auth is not available for default credentials.")
+    credentials, _ = google.auth.default(scopes=scopes)
+    return credentials
+
+
 @dataclass
 class PropertyRecord:
     property_id: str
@@ -153,16 +169,8 @@ class GoogleSheetsPropertyStore(PropertyStore):
                 "Google Sheets dependencies are not installed. "
                 "Install the packages in requirements.txt first."
             )
-
         scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-        if self.credentials_json:
-            credentials = Credentials.from_service_account_info(json.loads(self.credentials_json), scopes=scopes)
-        elif self.credentials_file and Path(self.credentials_file).exists():
-            credentials = Credentials.from_service_account_file(self.credentials_file, scopes=scopes)
-        else:
-            if google is None:
-                raise RuntimeError("google-auth is not available for default credentials.")
-            credentials, _ = google.auth.default(scopes=scopes)
+        credentials = build_google_credentials(scopes, self.credentials_file, self.credentials_json)
         service = build("sheets", "v4", credentials=credentials, cache_discovery=False)
         response = (
             service.spreadsheets()
@@ -218,6 +226,87 @@ class TwilioMessenger:
 
         message = self.client.messages.create(**payload)
         return {"sid": message.sid, "status": message.status}
+
+
+@dataclass
+class MessageLogRecord:
+    timestamp: str
+    direction: str
+    from_number: str
+    to_number: str
+    message_text: str
+    property_id: str = ""
+    intent: str = ""
+    status: str = ""
+    message_sid: str = ""
+    error: str = ""
+
+
+class MessageLogger:
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        raise NotImplementedError
+
+
+class NoopMessageLogger(MessageLogger):
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        return {"status": "noop"}
+
+
+class JsonlMessageLogger(MessageLogger):
+    def __init__(self, path: str):
+        self.path = Path(path)
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        payload = json.dumps(asdict(record), ensure_ascii=False)
+        with self.path.open("a", encoding="utf-8") as f:
+            f.write(payload + "\n")
+        return {"status": "written", "path": str(self.path)}
+
+
+class GoogleSheetsMessageLogger(MessageLogger):
+    def __init__(
+        self,
+        sheet_id: str,
+        worksheet_name: str,
+        credentials_file: str,
+        credentials_json: str,
+    ):
+        self.sheet_id = sheet_id
+        self.worksheet_name = worksheet_name
+        self.credentials_file = credentials_file
+        self.credentials_json = credentials_json
+        self.range_name = f"{worksheet_name}!A:J"
+
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        scopes = ["https://www.googleapis.com/auth/spreadsheets"]
+        credentials = build_google_credentials(scopes, self.credentials_file, self.credentials_json)
+        service = build("sheets", "v4", credentials=credentials, cache_discovery=False)
+        row = [
+            record.timestamp,
+            record.direction,
+            record.from_number,
+            record.to_number,
+            record.message_text,
+            record.property_id,
+            record.intent,
+            record.status,
+            record.message_sid,
+            record.error,
+        ]
+        response = (
+            service.spreadsheets()
+            .values()
+            .append(
+                spreadsheetId=self.sheet_id,
+                range=self.range_name,
+                valueInputOption="RAW",
+                insertDataOption="INSERT_ROWS",
+                body={"values": [row]},
+            )
+            .execute()
+        )
+        return {"status": "written", "updates": response.get("updates", {})}
 
 
 class CsvPropertyStore(PropertyStore):
@@ -423,6 +512,7 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
     brain: ConversationBrain | None = None
     messenger: TwilioMessenger | None = None
     security: TwilioWebhookSecurity | None = None
+    logger: MessageLogger | None = None
 
     def _send_json(self, payload: dict[str, Any], status: int = 200) -> None:
         body = json.dumps(payload).encode("utf-8")
@@ -441,6 +531,14 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
+
+    def _log_message(self, record: MessageLogRecord) -> None:
+        if self.logger is None:
+            return
+        try:
+            self.logger.log(record)
+        except Exception:
+            return
 
     def _send_xml(self, body_text: str, status: int = 200) -> None:
         body = body_text.encode("utf-8")
@@ -521,6 +619,8 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             raw = self.rfile.read(length).decode("utf-8")
             form = parse_qs(raw)
             phone = (form.get("From", [""]) or [""])[0].strip()
+            to_number = (form.get("To", [""]) or [""])[0].strip()
+            message_sid = (form.get("MessageSid", [""]) or [""])[0].strip()
             text = (form.get("Body", [""]) or [""])[0].strip()
             if not phone or not text:
                 return self._send_xml(self._twiml("Missing phone number or message."), status=400)
@@ -532,12 +632,51 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                 return self._send_xml(self._twiml("Forbidden"), status=403)
 
             result = self.brain.respond(phone, text)
+            self._log_message(
+                MessageLogRecord(
+                    timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    direction="inbound",
+                    from_number=phone,
+                    to_number=to_number,
+                    message_text=text,
+                    property_id=str(result.get("property_id", "")),
+                    intent=str(result.get("intent", "")),
+                    status="received",
+                    message_sid=message_sid,
+                )
+            )
             try:
                 outbound = self.messenger.send_sms(phone, result["reply"])
             except Exception as exc:
+                self._log_message(
+                    MessageLogRecord(
+                        timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                        direction="outbound",
+                        from_number=self.messenger.from_number or self.messenger.messaging_service_sid or "",
+                        to_number=phone,
+                        message_text=result["reply"],
+                        property_id=str(result.get("property_id", "")),
+                        intent=str(result.get("intent", "")),
+                        status="error",
+                        error=str(exc),
+                    )
+                )
                 return self._send_xml(self._twiml(f"Twilio send failed: {exc}"), status=500)
 
             result["twilio"] = outbound
+            self._log_message(
+                MessageLogRecord(
+                    timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    direction="outbound",
+                    from_number=self.messenger.from_number or self.messenger.messaging_service_sid or "",
+                    to_number=phone,
+                    message_text=result["reply"],
+                    property_id=str(result.get("property_id", "")),
+                    intent=str(result.get("intent", "")),
+                    status=str(outbound.get("status", "sent")),
+                    message_sid=str(outbound.get("sid", "")),
+                )
+            )
             return self._send_xml(self._twiml(""))
 
         if parsed.path in {"/demo/message", "/api/message"}:
@@ -553,6 +692,31 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             if not phone or not text:
                 return self._send_json({"error": "phone and text are required"}, status=400)
             result = self.brain.respond(phone, text)
+            to_number = self.messenger.from_number or self.messenger.messaging_service_sid or ""
+            self._log_message(
+                MessageLogRecord(
+                    timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    direction="inbound",
+                    from_number=phone,
+                    to_number=to_number,
+                    message_text=text,
+                    property_id=str(result.get("property_id", "")),
+                    intent=str(result.get("intent", "")),
+                    status="received",
+                )
+            )
+            self._log_message(
+                MessageLogRecord(
+                    timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    direction="outbound",
+                    from_number=to_number,
+                    to_number=phone,
+                    message_text=str(result.get("reply", "")),
+                    property_id=str(result.get("property_id", "")),
+                    intent=str(result.get("intent", "")),
+                    status="sent",
+                )
+            )
             return self._send_json(result)
 
         if parsed.path in {"/demo/reset", "/api/reset"}:
@@ -597,12 +761,28 @@ def build_store_from_env() -> PropertyStore:
     )
 
 
-def build_brain_and_services() -> tuple[ConversationBrain, TwilioMessenger, TwilioWebhookSecurity]:
+def build_message_logger_from_env() -> MessageLogger:
+    message_log_path = os.getenv("MESSAGE_LOG_PATH", "").strip()
+    if message_log_path:
+        return JsonlMessageLogger(message_log_path)
+
+    sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip()
+    worksheet_name = os.getenv("GOOGLE_SHEET_LOG_TAB", "MessageLogs").strip()
+    credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
+    if sheet_id:
+        return GoogleSheetsMessageLogger(sheet_id, worksheet_name, credentials_file, credentials_json)
+
+    return NoopMessageLogger()
+
+
+def build_brain_and_services() -> tuple[ConversationBrain, TwilioMessenger, TwilioWebhookSecurity, MessageLogger]:
     store = build_store_from_env()
     brain = ConversationBrain(store)
     messenger = TwilioMessenger()
     security = TwilioWebhookSecurity()
-    return brain, messenger, security
+    logger = build_message_logger_from_env()
+    return brain, messenger, security, logger
 
 
 def main() -> None:
@@ -612,10 +792,11 @@ def main() -> None:
     args = parser.parse_args()
 
     handler_cls = ProductionRequestHandler
-    brain, messenger, security = build_brain_and_services()
+    brain, messenger, security, logger = build_brain_and_services()
     handler_cls.brain = brain
     handler_cls.messenger = messenger
     handler_cls.security = security
+    handler_cls.logger = logger
     server = ThreadingHTTPServer((args.host, args.port), handler_cls)
     print(f"VP Realty production backend running at http://{args.host}:{args.port}")
     try:

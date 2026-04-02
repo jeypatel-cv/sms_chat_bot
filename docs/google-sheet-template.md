@@ -20,3 +20,16 @@ Use one worksheet tab named `Properties` with these column headers in row 1:
 - Use plain numbers for rent and room counts.
 - Keep one property per row.
 - Avoid merged cells or extra title rows.
+
+## Message Log Tab
+
+If you want to store inbound and outbound SMS records in the same spreadsheet, add a second worksheet tab named `MessageLogs` with these column headers in row 1:
+
+| timestamp | direction | from_number | to_number | message_text | property_id | intent | status | message_sid | error |
+|---|---|---|---|---|---|---|---|---|---|
+
+Suggested values:
+- `direction`: `inbound` or `outbound`
+- `status`: `received`, `sent`, `mock`, or `error`
+- `message_sid`: Twilio message SID when available
+- `error`: blank for success, text when something fails

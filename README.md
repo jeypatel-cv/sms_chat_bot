@@ -14,6 +14,7 @@ Start here:
 - answers basic leasing questions
 - keeps simple conversation context
 - simulates human handoff
+- logs inbound and outbound messages for review
 
 ## Run it
 
