@@ -1,6 +1,7 @@
 const chatLog = document.getElementById("chatLog");
 const promptList = document.getElementById("promptList");
 const propertyList = document.getElementById("propertyList");
+const propertyFilter = document.getElementById("propertyFilter");
 const phoneInput = document.getElementById("phoneInput");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
@@ -47,6 +48,20 @@ function renderProperties(items) {
   }
 }
 
+function filteredProperties() {
+  const query = (propertyFilter?.value || "").trim().toLowerCase();
+  if (!query) {
+    return properties;
+  }
+  return properties.filter((p) => {
+    const haystack = [p.name, p.address, p.property_id, p.listing_id, p.city, p.state]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
 function renderPrompts() {
   promptList.innerHTML = "";
   for (const prompt of prompts) {
@@ -67,6 +82,10 @@ async function loadProperties() {
   const data = await res.json();
   properties = data.properties || [];
   renderProperties(properties);
+}
+
+function refreshPropertyList() {
+  renderProperties(filteredProperties());
 }
 
 async function sendMessage() {
@@ -111,3 +130,7 @@ messageInput.addEventListener("keydown", (event) => {
 renderPrompts();
 loadProperties();
 resetConversation();
+
+if (propertyFilter) {
+  propertyFilter.addEventListener("input", refreshPropertyList);
+}

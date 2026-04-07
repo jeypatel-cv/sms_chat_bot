@@ -221,6 +221,14 @@ button {
   margin-top: 12px;
 }
 
+.filter-label {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
 .property-list {
   max-height: 620px;
   overflow-y: auto;
