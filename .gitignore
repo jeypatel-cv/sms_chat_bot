@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 .venv/
 data/message_logs.jsonl
+data/*.mhtml
+data/*.url
+tmp-server*.txt

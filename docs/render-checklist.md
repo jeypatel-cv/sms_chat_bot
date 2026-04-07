@@ -21,7 +21,8 @@ If you set the fields manually, use:
 Set these environment variables:
 - `PYTHON_VERSION=3.13.5`
 - `HOST=0.0.0.0`
-- `PROPERTIES_CSV_PATH=data/properties.example.10.csv`
+- `PROPERTIES_CSV_PATH=data/vp_properties_live_export.csv`
+- `PROPERTIES_SOURCE_URL=` if you have a direct CSV or JSON export URL
 - `TWILIO_ALLOW_MOCK=true`
 - `TWILIO_VALIDATE_REQUESTS=false`
 - `CACHE_TTL_SECONDS=300`
@@ -46,6 +47,7 @@ Before you do that:
 
 Remove:
 - `PROPERTIES_CSV_PATH`
+- or use `PROPERTIES_SOURCE_URL` instead if the source is a raw CSV or JSON feed
 
 Add:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
@@ -90,7 +92,11 @@ In Render, add or update:
 - `TWILIO_ALLOW_MOCK=false`
 
 If you are staying on CSV for one more test round, keep:
-- `PROPERTIES_CSV_PATH=data/properties.example.10.csv`
+- `PROPERTIES_CSV_PATH=data/vp_properties_live_export.csv`
+
+If you have a raw remote export, you can use:
+- `PROPERTIES_SOURCE_URL=https://...`
+- `PROPERTIES_SOURCE_FORMAT=csv` or `json`
 
 If you are switching to Google Sheets now, remove:
 - `PROPERTIES_CSV_PATH`

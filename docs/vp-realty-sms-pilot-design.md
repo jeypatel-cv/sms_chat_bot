@@ -46,9 +46,9 @@ Prove that VP Realty can use a custom pilot to:
 
 This design assumes:
 - VP Realty has or can obtain a business SMS number
-- VP Realty has a property source of truth in Google Sheets or a similar tabular source
-- the backend service can read the sheet and apply business rules consistently
-- A small number of property records will be enough for the first test
+- VP Realty has a property source of truth in a tabular source such as Google Sheets or a CSV export
+- the backend service can read the source and apply business rules consistently
+- a small number of property records will be enough for the first test
 
 ## 6. Target POC Experience
 
@@ -71,12 +71,12 @@ This POC should feel:
 ## 7. Proposed Architecture
 
 ### Custom pilot
-Use Twilio for the official SMS number, a Python backend for the conversation logic, and Google Sheets for the initial property data source.
+Use Twilio for the official SMS number, a Python backend for the conversation logic, and a tabular property source for the initial property data.
 
 ### Logical flow
 1. Customer sends SMS to the official number.
 2. Twilio forwards the message to the backend webhook.
-3. The backend loads the property data from Google Sheets.
+3. The backend loads the property data from the configured data source.
 4. The backend matches the property and intent.
 5. The backend generates the reply.
 6. Twilio sends the reply back by SMS.
@@ -156,7 +156,7 @@ Escalation options:
 - backend property source
 
 ### Integration approach
-Start with a small Google Sheet and keep the backend logic responsible for property lookup, response generation, and handoff.
+Start with a small tabular source and keep the backend logic responsible for property lookup, response generation, and handoff.
 
 ### Recommended integration order
 1. confirm the source of truth for property data
@@ -188,7 +188,7 @@ Set up the assistant behavior for:
 - basic FAQ handling
 
 ### Step 4: Connect data
-Connect the backend to the Google Sheet source of truth.
+Connect the backend to the chosen tabular source of truth.
 
 ### Step 5: Test common questions
 Run scripted SMS tests for:
@@ -263,3 +263,10 @@ After the POC works, expand into:
 - Who receives human handoff alerts?
 - What is the exact SMS number and sending setup?
 - What properties will be used in the first test set?
+
+## 19. Current Working Data Set
+
+For the current pilot, the working local test data is the live vacancies export CSV:
+- `data/vp_properties_live_export.csv`
+
+That file is used to keep local testing aligned with server-side testing.

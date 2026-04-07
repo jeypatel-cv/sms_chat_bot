@@ -5,7 +5,7 @@ Date: 2026-04-01
 ## 1. Goal
 
 This document describes a production-ready path for the VP Realty SMS assistant using:
-- `server.py` as the backend service
+- `production_app.py` as the backend service
 - Twilio for the official SMS phone number
 - Google Sheets as the initial property data source
 
@@ -24,9 +24,9 @@ Use a cloud-hosted Python service to:
 
 This keeps the business workflow simple and avoids forcing the team to edit JSON files or manage a full database too early.
 
-## 3. Where `server.py` Runs
+## 3. Where the Backend Runs
 
-`server.py` should run in a cloud-hosted environment, not on a local laptop.
+`production_app.py` should run in a cloud-hosted environment, not on a local laptop.
 
 Good hosting choices:
 - Render
@@ -67,8 +67,8 @@ The best fit for a small Python service is usually a container-based host or a m
 
 1. A customer texts the VP Realty phone number.
 2. Twilio receives the SMS.
-3. Twilio sends a webhook request to `server.py`.
-4. `server.py` loads the latest property data from Google Sheets or from cache.
+3. Twilio sends a webhook request to the backend service.
+4. The backend loads the latest property data from Google Sheets or from cache.
 5. The backend matches the property and intent.
 6. The backend generates the reply.
 7. The backend sends the reply back to Twilio.
@@ -191,7 +191,7 @@ Recommendation:
 ## 14. Recommended Deployment Layout
 
 ### Service 1: SMS backend
-- hosts `server.py`
+- hosts `production_app.py`
 - receives Twilio webhooks
 - queries Google Sheets
 - returns responses
@@ -209,8 +209,8 @@ Recommendation:
 
 ### Phase 1
 - move property data from JSON into Google Sheets
-- update `server.py` to read from the Sheets API
-- deploy `server.py` to a cloud host
+- update the production backend to read from the Sheets API
+- deploy the production backend to a cloud host
 - connect Twilio inbound SMS to the backend webhook
 
 ### Phase 2
@@ -232,6 +232,13 @@ Google Sheets is better for production operations because:
 - it supports a fast operational workflow for leasing staff
 
 JSON is still useful for local testing, but it is not ideal as the live source of truth.
+
+## 18. Local Test Data
+
+For local testing and server-side smoke testing, the shared CSV export is:
+- `data/vp_properties_live_export.csv`
+
+This keeps local testing aligned with the server-side demo data.
 
 ## 17. Risks
 

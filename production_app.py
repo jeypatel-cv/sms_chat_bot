@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import re
+from io import StringIO
 from dataclasses import dataclass
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlparse
+from urllib.request import Request, urlopen
 from xml.sax.saxutils import escape
 
 
@@ -38,6 +40,7 @@ BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 DEFAULT_CACHE_TTL_SECONDS = 300
 DEFAULT_GOOGLE_SHEET_ID = "1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44"
+DEFAULT_HANDOFF_TTL_SECONDS = 900
 
 
 def normalize(text: str) -> str:
@@ -356,6 +359,48 @@ class CsvPropertyStore(PropertyStore):
             return [PropertyRecord.from_row(row) for row in reader]
 
 
+class RemotePropertyStore(PropertyStore):
+    def __init__(self, source_url: str, source_format: str = ""):
+        self.source_url = source_url
+        self.source_format = source_format.strip().lower()
+
+    def load(self) -> list[PropertyRecord]:
+        request = Request(self.source_url, headers={"User-Agent": "VP-Realty-SMS-Pilot/1.0"})
+        with urlopen(request, timeout=20) as response:
+            content_type = (response.headers.get("Content-Type") or "").lower()
+            raw = response.read().decode("utf-8", errors="replace")
+
+        format_hint = self.source_format
+        if not format_hint:
+            if "json" in content_type:
+                format_hint = "json"
+            elif "csv" in content_type or "text/plain" in content_type:
+                format_hint = "csv"
+            elif raw.lstrip().startswith("{") or raw.lstrip().startswith("["):
+                format_hint = "json"
+            elif "," in raw.splitlines()[0] if raw.splitlines() else False:
+                format_hint = "csv"
+
+        if format_hint == "csv":
+            reader = csv.DictReader(StringIO(raw))
+            return [PropertyRecord.from_row(row) for row in reader]
+
+        if format_hint == "json":
+            payload = json.loads(raw)
+            if isinstance(payload, dict):
+                rows = payload.get("properties", payload.get("rows", payload.get("data", [])))
+            else:
+                rows = payload
+            if not isinstance(rows, list):
+                raise RuntimeError("Remote JSON source must be a list or contain a properties/data/rows list.")
+            return [PropertyRecord.from_row(row) for row in rows if isinstance(row, dict)]
+
+        raise RuntimeError(
+            "Remote properties source must return CSV or JSON. "
+            "The provided URL appears to be an HTML page or unsupported format."
+        )
+
+
 class ConversationBrain:
     def __init__(self, property_store: PropertyStore):
         self.property_store = property_store
@@ -367,9 +412,26 @@ class ConversationBrain:
             self.sessions[phone] = {
                 "property_id": None,
                 "human_handoff": False,
+                "human_handoff_until": None,
                 "last_match_type": None,
             }
         return self.sessions[phone]
+
+    def _handoff_is_active(self, session: dict[str, Any]) -> bool:
+        until = session.get("human_handoff_until")
+        if not until:
+            return False
+        try:
+            expires_at = datetime.fromisoformat(str(until))
+        except ValueError:
+            session["human_handoff"] = False
+            session["human_handoff_until"] = None
+            return False
+        if datetime.now(timezone.utc) >= expires_at:
+            session["human_handoff"] = False
+            session["human_handoff_until"] = None
+            return False
+        return True
 
     def load_properties(self) -> list[PropertyRecord]:
         return self.property_store.load()
@@ -458,10 +520,9 @@ class ConversationBrain:
 
         def manager_contact_reply() -> str:
             if manager_phone:
-                return f"I’m not sure about that detail. Please contact {manager_name} at {manager_phone} for {prop.name}."
+                return f"Please contact {manager_name} at {manager_phone} for more details on {prop.name}."
             return (
-                f"I’m not sure about that detail. Please contact the leasing team for {prop.name} "
-                "for more help."
+                f"Please contact the leasing team for {prop.name} for more details."
             )
 
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
@@ -480,38 +541,72 @@ class ConversationBrain:
 
         return manager_contact_reply()
 
+    def footer_for_property(self, prop: PropertyRecord | None) -> str:
+        if prop is None:
+            return "Call the leasing team for details."
+
+        manager_phone = prop.manager_phone.strip()
+        if manager_phone:
+            return f"Call {manager_phone} for details."
+        return "Call the leasing team for details."
+
+    def add_footer(self, reply: str, prop: PropertyRecord | None) -> str:
+        footer = self.footer_for_property(prop)
+        if not footer:
+            return reply
+        if footer.lower() in normalize(reply):
+            return reply
+        return f"{reply} {footer}"
+
     def respond(self, phone: str, text: str) -> dict[str, Any]:
         session = self.get_session(phone)
+        self._handoff_is_active(session)
         prop, match_type = self.find_property(text, session)
         normalized = normalize(text)
         reply = ""
         intent = "unknown"
 
         if session.get("human_handoff"):
-            reply = "A leasing specialist has been notified. Please hold while we review your request."
+            reply = self.add_footer(
+                "A leasing specialist has been notified. Please hold while we review your request.",
+                prop,
+            )
             intent = "handoff"
         elif any(word in normalized for word in ["human", "agent", "person", "call me"]):
             session["human_handoff"] = True
-            reply = (
-                "No problem. I can connect you with a leasing specialist. "
-                "Please share the property address or listing ID if you have it."
+            ttl_seconds = int(os.getenv("HANDOFF_TTL_SECONDS", str(DEFAULT_HANDOFF_TTL_SECONDS)))
+            session["human_handoff_until"] = (
+                datetime.now(timezone.utc) + timedelta(seconds=ttl_seconds)
+            ).isoformat(timespec="seconds")
+            reply = self.add_footer(
+                (
+                    "No problem. I can connect you with a leasing specialist. "
+                    "Please share the property address or listing ID if you have it."
+                ),
+                prop,
             )
             intent = "human_handoff"
         elif prop is None:
-            reply = (
-                "Please send the property address or listing ID, "
-                "and I can check availability, rent, and bedroom details."
+            reply = self.add_footer(
+                (
+                    "Please send the property address or listing ID, "
+                    "and I can check availability, rent, and bedroom details."
+                ),
+                None,
             )
             intent = "clarify_property"
         elif match_type == "partial":
-            reply = (
-                f"I found {prop.name} at {prop.address}. "
-                "Do you want rent, availability, or bedroom details for this property?"
+            reply = self.add_footer(
+                (
+                    f"I found {prop.name} at {prop.address}. "
+                    "Do you want rent, availability, or bedroom details for this property?"
+                ),
+                prop,
             )
             intent = "property_suggestion"
         else:
             intent = "property_qna"
-            reply = self.answer_property_question(prop, normalized)
+            reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
 
         message = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -788,6 +883,11 @@ def build_store_from_env() -> PropertyStore:
     if csv_path:
         return CsvPropertyStore(csv_path)
 
+    source_url = os.getenv("PROPERTIES_SOURCE_URL", "").strip()
+    source_format = os.getenv("PROPERTIES_SOURCE_FORMAT", "").strip()
+    if source_url:
+        return RemotePropertyStore(source_url, source_format)
+
     sheet_id = os.getenv("GOOGLE_SHEET_ID", DEFAULT_GOOGLE_SHEET_ID).strip()
     worksheet_name = os.getenv("GOOGLE_SHEET_TAB", "Properties").strip()
     credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
@@ -798,6 +898,7 @@ def build_store_from_env() -> PropertyStore:
 
     raise RuntimeError(
         "Set GOOGLE_SHEET_ID + GOOGLE_APPLICATION_CREDENTIALS for Google Sheets, "
+        "PROPERTIES_SOURCE_URL for a remote CSV/JSON feed, "
         "or PROPERTIES_CSV_PATH for a local CSV fallback."
     )
 

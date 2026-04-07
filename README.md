@@ -10,7 +10,7 @@ Start here:
 ## What it does
 
 - serves a local test harness for the SMS engine
-- uses dummy property data for safe testing
+- uses the live export CSV for local and server-side testing
 - answers basic leasing questions
 - keeps simple conversation context
 - simulates human handoff
@@ -31,6 +31,13 @@ http://127.0.0.1:8000/demo
 ```
 
 Production uses the same `production_app.py` engine with cloud environment variables.
+
+## Test data
+
+The local demo uses:
+- `data/vp_properties_live_export.csv`
+
+This keeps local and server-side tests aligned on the same property set.
 
 ## Test prompts
 

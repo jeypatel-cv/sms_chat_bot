@@ -15,6 +15,10 @@ This folder holds the planning and deployment notes for the VP Realty SMS pilot.
 - [Render Free Deployment](render-free-deployment.md)
 - [Render Checklist](render-checklist.md)
 
+## Data
+
+- [Live Export CSV](../data/vp_properties_live_export.csv)
+
 ## Workspace
 
 - [Production App](../production_app.py)
