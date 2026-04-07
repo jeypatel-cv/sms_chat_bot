@@ -221,6 +221,12 @@ button {
   margin-top: 12px;
 }
 
+.property-list {
+  max-height: 620px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
 .prompt-chip,
 .property-card {
   background: rgba(255, 255, 255, 0.05);
