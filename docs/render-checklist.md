@@ -27,6 +27,8 @@ Set these environment variables:
 - `TWILIO_VALIDATE_REQUESTS=false`
 - `CACHE_TTL_SECONDS=300`
 
+If the demo page looks empty, hard refresh the browser after the first deploy.
+
 After deploy, verify:
 - `GET /healthz`
 - `GET /demo`
@@ -60,7 +62,7 @@ Add:
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`
-- `PUBLIC_BASE_URL=https://YOUR-RENDER-URL`
+- `PUBLIC_BASE_URL=https://vp-realty-sms-pilot.onrender.com`
 - `TWILIO_VALIDATE_REQUESTS=true`
 - `TWILIO_ALLOW_MOCK=false`
 
@@ -72,6 +74,32 @@ Then:
 Note:
 - console logging is on by default
 - Google Sheets logging only turns on when `MESSAGE_LOG_TO_GOOGLE_SHEETS=true`
+
+## Live SMS Settings
+
+### Render
+For real SMS testing, keep these in Render:
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_AUTH_TOKEN`
+- `TWILIO_FROM_NUMBER=+12142064345`
+- `PUBLIC_BASE_URL=https://vp-realty-sms-pilot.onrender.com`
+- `TWILIO_VALIDATE_REQUESTS=true`
+- `TWILIO_ALLOW_MOCK=false`
+
+If you are still using the live export CSV for now, keep:
+- `PROPERTIES_CSV_PATH=data/vp_properties_live_export.csv`
+
+If you want Google Sheets later, remove:
+- `PROPERTIES_CSV_PATH`
+
+### Twilio
+In the Twilio Console, on the phone number page:
+- Messaging -> A Message Comes In -> `Webhook`
+- URL -> `https://vp-realty-sms-pilot.onrender.com/twilio/sms`
+- Method -> `POST`
+
+Use the approved sender number in `TWILIO_FROM_NUMBER`.
+Do not use Voice or Studio for the inbound SMS route unless you intentionally want to change the flow.
 
 ## Phase 3: Exact Production Setup Order
 
@@ -111,7 +139,8 @@ And add:
 
 ### Step 3: Share the Google Sheet
 - Share the sheet with the Google service account email that Render will use.
-- Give it Viewer access.
+- Give it Viewer access for property reads.
+- Give it Editor access if you want the app to write logs into Google Sheets.
 
 ### Step 4: Redeploy Render
 - Save the environment variables.

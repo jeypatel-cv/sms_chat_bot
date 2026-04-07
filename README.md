@@ -4,6 +4,7 @@ This project contains the VP Realty SMS pilot, with the same backend engine used
 
 Start here:
 - [docs/INDEX.md](docs/INDEX.md)
+- [docs/render-checklist.md](docs/render-checklist.md)
 - `server.py` for local testing
 - `production_app.py` for production
 
@@ -51,6 +52,7 @@ This keeps local and server-side tests aligned on the same property set.
 
 - `server.py` - local HTTP server and conversation engine
 - `data/properties.json` - dummy property dataset
+- `data/vp_properties_live_export.csv` - current live property export used by local and demo testing
 - `static/index.html` - UI shell
 - `static/styles.css` - visual styling
 - `static/app.js` - frontend behavior
