@@ -116,6 +116,7 @@ class PropertyRecord:
     available_from: str | None
     description: str = ""
     manager_name: str = ""
+    manager_email: str = ""
     manager_phone: str = ""
     contact_owner: str = ""
     listing_id: str = ""
@@ -139,6 +140,7 @@ class PropertyRecord:
             available_from=str(row.get("available_from", "")).strip() or None,
             description=str(row.get("description", "")).strip(),
             manager_name=str(row.get("manager_name", row.get("contact_owner", ""))).strip(),
+            manager_email=str(row.get("Manager Email", row.get("manager_email", ""))).strip(),
             manager_phone=str(row.get("manager_phone", row.get("contact_phone", ""))).strip(),
             contact_owner=str(row.get("contact_owner", "")).strip(),
             listing_id=str(row.get("listing_id", "")).strip(),
@@ -593,14 +595,17 @@ class ConversationBrain:
         available_from = format_date(prop.available_from)
         availability = prop.availability or "unknown"
         manager_name = prop.manager_name or prop.contact_owner or "the property manager"
+        manager_email = prop.manager_email.strip()
         manager_phone = prop.manager_phone.strip()
 
         def manager_contact_reply() -> str:
+            if manager_phone and manager_email:
+                return f"Please contact {manager_name} at {manager_phone} or {manager_email} for more details on {prop.name}."
             if manager_phone:
                 return f"Please contact {manager_name} at {manager_phone} for more details on {prop.name}."
-            return (
-                f"Please contact the leasing team for {prop.name} for more details."
-            )
+            if manager_email:
+                return f"Please contact {manager_name} at {manager_email} for more details on {prop.name}."
+            return f"Please contact the leasing team for {prop.name} for more details."
 
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
             return f"{prop.name} is available from {available_from}."
@@ -622,9 +627,14 @@ class ConversationBrain:
         if prop is None:
             return "Call the leasing team for details."
 
+        manager_email = prop.manager_email.strip()
         manager_phone = prop.manager_phone.strip()
+        if manager_phone and manager_email:
+            return f"Call {manager_phone} or email {manager_email} for details."
         if manager_phone:
             return f"Call {manager_phone} for details."
+        if manager_email:
+            return f"Email {manager_email} for details."
         return "Call the leasing team for details."
 
     def add_footer(self, reply: str, prop: PropertyRecord | None) -> str:
