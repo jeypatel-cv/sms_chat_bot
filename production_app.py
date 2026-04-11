@@ -108,6 +108,7 @@ class PropertyRecord:
     property_id: str
     name: str
     address: str
+    city: str
     rent_per_month: float | int | None
     bedrooms: int | None
     bathrooms: int | None
@@ -130,6 +131,7 @@ class PropertyRecord:
                     row.get("address", ""),
                 )
             ).strip(),
+            city=str(row.get("city", "")).strip(),
             rent_per_month=parse_number(row.get("rent")),
             bedrooms=parse_number(row.get("bedrooms")),
             bathrooms=parse_number(row.get("bathrooms")),
@@ -406,6 +408,7 @@ class ConversationBrain:
         self.property_store = property_store
         self.sessions: dict[str, dict[str, Any]] = {}
         self.history: dict[str, list[dict[str, Any]]] = {}
+        self.max_list_results = 3
 
     def get_session(self, phone: str) -> dict[str, Any]:
         if phone not in self.sessions:
@@ -435,6 +438,80 @@ class ConversationBrain:
 
     def load_properties(self) -> list[PropertyRecord]:
         return self.property_store.load()
+
+    def extract_budget_limit(self, text: str) -> float | int | None:
+        normalized = normalize(text)
+        patterns = [
+            r"(?:max|maximum|budget|under|below|less than|up to|upto|no more than)\s*(?:is|of|at|around|about)?\s*\$?\s*(\d[\d,]*(?:\.\d+)?)",
+            r"\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(?:max|maximum|budget|or less|under|below|less than|up to|upto)",
+        ]
+        for pattern in patterns:
+            match = re.search(pattern, normalized)
+            if match:
+                return parse_number(match.group(1))
+
+        budget_terms = ["budget", "max", "maximum", "under", "below", "less than", "up to", "upto", "or less"]
+        if any(word in normalized for word in budget_terms):
+            bare_match = re.search(r"\$?\s*(\d[\d,]*(?:\.\d+)?)", normalized)
+            if bare_match:
+                return parse_number(bare_match.group(1))
+
+        return None
+
+    def detect_city(self, text: str, properties: list[PropertyRecord]) -> str | None:
+        normalized = normalize(text)
+        compact_text = compact(text)
+        cities = []
+        for prop in properties:
+            city = prop.city.strip()
+            if city and city not in cities:
+                cities.append(city)
+        cities.sort(key=lambda value: len(compact(value)), reverse=True)
+        for city in cities:
+            city_norm = normalize(city)
+            city_compact = compact(city)
+            city_tokens = tokens(city)
+            if city_norm and city_norm in normalized:
+                return city
+            if city_compact and city_compact in compact_text:
+                return city
+            if city_tokens and city_tokens <= tokens(text):
+                return city
+        return None
+
+    def list_properties_reply(self, properties: list[PropertyRecord], label: str, max_results: int | None = None) -> str:
+        if not properties:
+            return f"I could not find any properties in {label}."
+
+        limit = max_results or self.max_list_results
+        limited = properties[:limit]
+        lines = [f"I found {len(properties)} properties in {label}:" if len(properties) != 1 else f"I found 1 property in {label}:"]
+        for prop in limited:
+            rent = f"${int(prop.rent_per_month):,}" if prop.rent_per_month is not None else "not provided"
+            beds = prop.bedrooms if prop.bedrooms is not None else "?"
+            baths = prop.bathrooms if prop.bathrooms is not None else "?"
+            lines.append(f"- {prop.name} | {prop.address} | {beds} bd / {baths} ba | {rent}")
+        if len(properties) > limit:
+            lines.append(f"And {len(properties) - limit} more. Send the address for details.")
+        else:
+            lines.append("Send the address for details.")
+        return " ".join(lines)
+
+    def find_city_matches(self, text: str, properties: list[PropertyRecord]) -> tuple[str | None, list[PropertyRecord]]:
+        city = self.detect_city(text, properties)
+        if not city:
+            return None, []
+        matches = [prop for prop in properties if normalize(prop.city) == normalize(city)]
+        matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
+        return city, matches
+
+    def find_budget_matches(self, text: str, properties: list[PropertyRecord]) -> tuple[float | int | None, list[PropertyRecord]]:
+        budget = self.extract_budget_limit(text)
+        if budget is None:
+            return None, []
+        matches = [prop for prop in properties if prop.rent_per_month is not None and prop.rent_per_month <= budget]
+        matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
+        return budget, matches
 
     def find_property(self, text: str, session: dict[str, Any]) -> tuple[PropertyRecord | None, str | None]:
         properties = self.load_properties()
@@ -581,20 +658,33 @@ class ConversationBrain:
             reply = self.add_footer(
                 (
                     "No problem. I can connect you with a leasing specialist. "
-                    "Please share the property address or listing ID if you have it."
+                    "Please share the property area or address if you have it."
                 ),
                 prop,
             )
             intent = "human_handoff"
         elif prop is None:
-            reply = self.add_footer(
-                (
-                    "Please send the property address or listing ID, "
-                    "and I can check availability, rent, and bedroom details."
-                ),
-                None,
-            )
-            intent = "clarify_property"
+            city, city_matches = self.find_city_matches(text, self.load_properties())
+            if city_matches:
+                reply = self.add_footer(self.list_properties_reply(city_matches, city), None)
+                intent = "area_list"
+            else:
+                budget, budget_matches = self.find_budget_matches(text, self.load_properties())
+                if budget_matches:
+                    reply = self.add_footer(
+                        self.list_properties_reply(budget_matches, f"${int(budget):,} budget"),
+                        None,
+                    )
+                    intent = "budget_list"
+                else:
+                    reply = self.add_footer(
+                        (
+                            "Which area are you looking to rent, like Allen, Frisco, or Plano? "
+                            "Or send your max budget or the property address."
+                        ),
+                        None,
+                    )
+                    intent = "clarify_property"
         elif match_type == "partial":
             reply = self.add_footer(
                 (
