@@ -487,17 +487,20 @@ class ConversationBrain:
 
         limit = max_results or self.max_list_results
         limited = properties[:limit]
-        lines = [f"I found {len(properties)} properties in {label}:" if len(properties) != 1 else f"I found 1 property in {label}:"]
+        label_text = f"{label} options" if not label.startswith("$") else f"Under {label} options"
+        items = []
         for prop in limited:
             rent = f"${int(prop.rent_per_month):,}" if prop.rent_per_month is not None else "not provided"
-            beds = prop.bedrooms if prop.bedrooms is not None else "?"
-            baths = prop.bathrooms if prop.bathrooms is not None else "?"
-            lines.append(f"- {prop.name} | {prop.address} | {beds} bd / {baths} ba | {rent}")
+            items.append(f"{prop.address} - {rent}")
+        reply = f"{label_text}: " + "; ".join(items)
         if len(properties) > limit:
-            lines.append(f"And {len(properties) - limit} more. Send the address for details.")
+            reply += (
+                f". And {len(properties) - limit} more. "
+                + ("Send the address to get details." if label.startswith("$") else "Send your budget or the address to narrow it down.")
+            )
         else:
-            lines.append("Send the address for details.")
-        return " ".join(lines)
+            reply += " " + ("Send the address to get details." if label.startswith("$") else "Send your budget or the address to narrow it down.")
+        return reply
 
     def find_city_matches(self, text: str, properties: list[PropertyRecord]) -> tuple[str | None, list[PropertyRecord]]:
         city = self.detect_city(text, properties)
