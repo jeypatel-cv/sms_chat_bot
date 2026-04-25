@@ -954,6 +954,19 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                     status="received",
                 )
             )
+            sms_status = "sent"
+            sms_error = ""
+            if from_number:
+                try:
+                    outbound = self.messenger.send_sms(from_number, voice_message)
+                    sms_status = str(outbound.get("status", "sent"))
+                except Exception as exc:
+                    sms_status = "error"
+                    sms_error = str(exc)
+            else:
+                sms_status = "error"
+                sms_error = "Missing caller phone number."
+
             self._log_message(
                 MessageLogRecord(
                     timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -961,7 +974,8 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                     from_number=to_number,
                     to_number=from_number,
                     message_text=voice_message,
-                    status="sent",
+                    status=sms_status,
+                    error=sms_error,
                 )
             )
             return self._send_xml(
