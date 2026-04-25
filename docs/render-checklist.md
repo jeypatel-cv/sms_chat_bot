@@ -102,6 +102,7 @@ In the Twilio Console, on the phone number page:
 
 Use the approved sender number in `TWILIO_FROM_NUMBER`.
 Do not use Voice or Studio for the inbound SMS route unless you intentionally want to change the flow.
+Voice calls are logged with `in-CALL` and `out-SMS-C` directions.
 
 ## Phase 3: Exact Production Setup Order
 

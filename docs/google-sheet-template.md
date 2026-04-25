@@ -30,6 +30,6 @@ This is optional and used when the backend logs messages into the sheet.
 |---|---|---|---|---|---|---|---|---|
 
 Suggested values:
-- `direction`: `inbound` or `outbound`
+- `direction`: `in-SMS`, `out-SMS`, `in-CALL`, or `out-SMS-C`
 - `status`: `received`, `sent`, `mock`, or `error`
 - `error`: blank for success, text when something fails

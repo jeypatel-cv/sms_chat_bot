@@ -931,6 +931,8 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length).decode("utf-8")
             form = parse_qs(raw)
+            from_number = (form.get("From", [""]) or [""])[0].strip()
+            to_number = (form.get("To", [""]) or [""])[0].strip()
 
             request_params = {key: values[0] for key, values in form.items()}
             request_url = self.security.external_url(self.path, dict(self.headers))
@@ -938,10 +940,32 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             if not self.security.validate(request_url, request_params, signature):
                 return self._send_xml(self._voice_twiml("Forbidden"), status=403)
 
-            return self._send_xml(
-                self._voice_twiml(
-                    "Thanks for calling VP Realty. Please send us a text message with your question, and our agent will reply to your message."
+            voice_message = (
+                "Thanks for calling VP Realty. Please send us a text message with your question, "
+                "and our agent will reply to your message."
+            )
+            self._log_message(
+                MessageLogRecord(
+                    timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    direction="in-CALL",
+                    from_number=from_number,
+                    to_number=to_number,
+                    message_text="Incoming call received; played SMS deflection prompt.",
+                    status="received",
                 )
+            )
+            self._log_message(
+                MessageLogRecord(
+                    timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                    direction="out-SMS-C",
+                    from_number=to_number,
+                    to_number=from_number,
+                    message_text=voice_message,
+                    status="sent",
+                )
+            )
+            return self._send_xml(
+                self._voice_twiml(voice_message)
             )
 
         if parsed.path == "/twilio/sms":
