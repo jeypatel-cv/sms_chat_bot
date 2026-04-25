@@ -890,6 +890,23 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/twilio/voice":
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length).decode("utf-8")
+            form = parse_qs(raw)
+
+            request_params = {key: values[0] for key, values in form.items()}
+            request_url = self.security.external_url(self.path, dict(self.headers))
+            signature = self.headers.get("X-Twilio-Signature", "")
+            if not self.security.validate(request_url, request_params, signature):
+                return self._send_xml(self._voice_twiml("Forbidden"), status=403)
+
+            return self._send_xml(
+                self._voice_twiml(
+                    "Thanks for calling VP Realty. Please send us a text message with your question, and our agent will reply to your message."
+                )
+            )
+
         if parsed.path == "/twilio/sms":
             length = int(self.headers.get("Content-Length", "0"))
             raw = self.rfile.read(length).decode("utf-8")
@@ -1013,6 +1030,12 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
 
     def _twiml(self, message: str) -> str:
         return f'<?xml version="1.0" encoding="UTF-8"?><Response><Message>{escape(message)}</Message></Response>'
+
+    def _voice_twiml(self, message: str) -> str:
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>'
+            f"<Response><Say>{escape(message)}</Say><Hangup /></Response>"
+        )
 
 
 def build_store_from_env() -> PropertyStore:

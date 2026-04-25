@@ -96,6 +96,9 @@ In the Twilio Console, on the phone number page:
 - Messaging -> A Message Comes In -> `Webhook`
 - URL -> `https://vp-realty-sms-pilot.onrender.com/twilio/sms`
 - Method -> `POST`
+- Voice -> A Call Comes In -> `Webhook`
+- URL -> `https://vp-realty-sms-pilot.onrender.com/twilio/voice`
+- Method -> `POST`
 
 Use the approved sender number in `TWILIO_FROM_NUMBER`.
 Do not use Voice or Studio for the inbound SMS route unless you intentionally want to change the flow.
