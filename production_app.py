@@ -988,7 +988,7 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             self._log_message(
                 MessageLogRecord(
                     timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    direction="inbound",
+                    direction="in-SMS",
                     from_number=phone,
                     to_number=to_number,
                     message_text=text,
@@ -1003,14 +1003,14 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                 self._log_message(
                     MessageLogRecord(
                         timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                        direction="outbound",
+                        direction="out-SMS",
                         from_number=self.messenger.from_number or self.messenger.messaging_service_sid or "",
                         to_number=phone,
-                    message_text=result["reply"],
-                    property_id=str(result.get("property_id", "")),
-                    intent=str(result.get("intent", "")),
-                    status="error",
-                    error=str(exc),
+                        message_text=result["reply"],
+                        property_id=str(result.get("property_id", "")),
+                        intent=str(result.get("intent", "")),
+                        status="error",
+                        error=str(exc),
                     )
                 )
                 return self._send_xml(self._twiml(f"Twilio send failed: {exc}"), status=500)
@@ -1019,7 +1019,7 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             self._log_message(
                 MessageLogRecord(
                     timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    direction="outbound",
+                    direction="out-SMS",
                     from_number=self.messenger.from_number or self.messenger.messaging_service_sid or "",
                     to_number=phone,
                     message_text=result["reply"],
@@ -1047,7 +1047,7 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             self._log_message(
                 MessageLogRecord(
                     timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    direction="inbound",
+                    direction="in-SMS",
                     from_number=phone,
                     to_number=to_number,
                     message_text=text,
@@ -1059,7 +1059,7 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
             self._log_message(
                 MessageLogRecord(
                     timestamp=datetime.now(timezone.utc).isoformat(timespec="seconds"),
-                    direction="outbound",
+                    direction="out-SMS",
                     from_number=to_number,
                     to_number=phone,
                     message_text=str(result.get("reply", "")),
