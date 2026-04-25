@@ -18,10 +18,10 @@ Use the columns described in [google-sheet-template.md](google-sheet-template.md
 The current pilot sheet ID is already wired as the default in the app:
 - `1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 
-### 2. Create a Google service account
-Grant it read access to the sheet and download the JSON key file securely.
-If you use a cloud host with its own service identity, share the sheet with that service account email too.
-On Render, the easiest path is to store the service account JSON in `GOOGLE_APPLICATION_CREDENTIALS_JSON`.
+### 2. Create the message log endpoint
+Create a Google Apps Script web app bound to the Sheet.
+Set it to execute as you and allow access to `Anyone`.
+Use it as the message log sink instead of the Google Sheets API.
 
 ### 3. Choose a cloud host
 Deploy the Python app to a cloud environment such as Render, Fly.io, Railway, Cloud Run, or App Service.
@@ -34,8 +34,10 @@ Set:
 - `GOOGLE_SHEET_ID` if you want to override the default sheet ID
 - `GOOGLE_SHEET_TAB`
 - `PYTHON_VERSION=3.13.5` if you want to pin the runtime on Render
-- `GOOGLE_APPLICATION_CREDENTIALS`
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` if you want to paste the JSON directly into the host secrets
+- `MESSAGE_LOG_TO_CONSOLE=true`
+- `MESSAGE_LOG_TO_APPS_SCRIPT=true`
+- `MESSAGE_LOG_APPS_SCRIPT_URL`
+- `MESSAGE_LOG_APPS_SCRIPT_SECRET`
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`

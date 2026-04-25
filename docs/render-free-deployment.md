@@ -37,8 +37,10 @@ Set these in the Render dashboard:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 - `GOOGLE_SHEET_TAB=Properties`
 - `PYTHON_VERSION=3.13.5`
-- `GOOGLE_APPLICATION_CREDENTIALS` if using a JSON key file
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` if you paste the JSON into Render secrets
+- `MESSAGE_LOG_TO_CONSOLE=true`
+- `MESSAGE_LOG_TO_APPS_SCRIPT=true`
+- `MESSAGE_LOG_APPS_SCRIPT_URL`
+- `MESSAGE_LOG_APPS_SCRIPT_SECRET`
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`
@@ -48,8 +50,8 @@ Set these in the Render dashboard:
 
 ## Google Sheets Access
 
-The backend reads the sheet through the Google Sheets API.
-That means the service account or cloud identity used by Render must have read access to the sheet.
+The backend reads property data from Google Sheets.
+For message logging, it posts to the Apps Script web app.
 
 ## Twilio Webhook
 

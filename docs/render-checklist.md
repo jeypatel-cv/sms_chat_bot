@@ -41,7 +41,7 @@ Suggested smoke-test messages:
 
 ## Phase 2: Production-Like Setup
 
-After the smoke test works, switch the service to Google Sheets and Twilio.
+After the smoke test works, switch the service to Twilio and message logging.
 
 Before you do that:
 - rotate the Twilio auth token because it was shared in chat
@@ -54,11 +54,10 @@ Remove:
 Add:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 - `GOOGLE_SHEET_TAB=Properties`
-- `GOOGLE_SHEET_LOG_TAB=MessageLogs`
 - `MESSAGE_LOG_TO_CONSOLE=true`
-- `MESSAGE_LOG_TO_GOOGLE_SHEETS=false`
-- `GOOGLE_APPLICATION_CREDENTIALS` if using a mounted JSON file
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` if you paste the service account JSON into Render secrets
+- `MESSAGE_LOG_TO_APPS_SCRIPT=true`
+- `MESSAGE_LOG_APPS_SCRIPT_URL=https://script.google.com/macros/s/.../exec`
+- `MESSAGE_LOG_APPS_SCRIPT_SECRET=your-shared-secret`
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`
@@ -67,13 +66,13 @@ Add:
 - `TWILIO_ALLOW_MOCK=false`
 
 Then:
-1. Share the Google Sheet with the service account email.
+1. Deploy the Apps Script web app with `Execute as: Me` and access set to `Anyone`.
 2. Point Twilio's inbound SMS webhook to `https://YOUR-RENDER-URL/twilio/sms`.
 3. Send one test SMS from a verified number.
 
 Note:
 - console logging is on by default
-- Google Sheets logging only turns on when `MESSAGE_LOG_TO_GOOGLE_SHEETS=true`
+- Apps Script logging only turns on when `MESSAGE_LOG_TO_APPS_SCRIPT=true`
 
 ## Live SMS Settings
 
@@ -132,15 +131,13 @@ If you are switching to Google Sheets now, remove:
 And add:
 - `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 - `GOOGLE_SHEET_TAB=Properties`
-- `GOOGLE_SHEET_LOG_TAB=MessageLogs`
 - `MESSAGE_LOG_TO_CONSOLE=true`
-- `MESSAGE_LOG_TO_GOOGLE_SHEETS=false`
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` or `GOOGLE_APPLICATION_CREDENTIALS`
+- `MESSAGE_LOG_TO_APPS_SCRIPT=true`
+- `MESSAGE_LOG_APPS_SCRIPT_URL=https://script.google.com/macros/s/.../exec`
+- `MESSAGE_LOG_APPS_SCRIPT_SECRET=your-shared-secret`
 
 ### Step 3: Share the Google Sheet
-- Share the sheet with the Google service account email that Render will use.
-- Give it Viewer access for property reads.
-- Give it Editor access if you want the app to write logs into Google Sheets.
+- Share the sheet with your Google account, since Apps Script writes as the owner.
 
 ### Step 4: Redeploy Render
 - Save the environment variables.

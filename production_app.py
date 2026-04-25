@@ -353,6 +353,40 @@ class GoogleSheetsMessageLogger(MessageLogger):
         return {"status": "written", "updates": response.get("updates", {})}
 
 
+class AppsScriptMessageLogger(MessageLogger):
+    def __init__(self, web_app_url: str, secret: str):
+        self.web_app_url = web_app_url
+        self.secret = secret
+
+    def log(self, record: MessageLogRecord) -> dict[str, Any]:
+        if not self.web_app_url:
+            raise RuntimeError("MESSAGE_LOG_APPS_SCRIPT_URL is required.")
+        if not self.secret:
+            raise RuntimeError("MESSAGE_LOG_APPS_SCRIPT_SECRET is required.")
+
+        payload = asdict(record)
+        payload["secret"] = self.secret
+        body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+        request = Request(
+            self.web_app_url,
+            data=body,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        with urlopen(request, timeout=20) as response:
+            response_body = response.read().decode("utf-8", errors="replace").strip()
+
+        if response_body:
+            try:
+                parsed = json.loads(response_body)
+            except json.JSONDecodeError:
+                parsed = {"raw": response_body}
+        else:
+            parsed = {}
+
+        return {"status": "written", "response": parsed}
+
+
 class CsvPropertyStore(PropertyStore):
     def __init__(self, csv_path: str):
         self.csv_path = Path(csv_path)
@@ -1010,12 +1044,10 @@ def build_message_logger_from_env() -> MessageLogger:
     loggers: list[MessageLogger] = []
     if truthy_env("MESSAGE_LOG_TO_CONSOLE", "true"):
         loggers.append(ConsoleMessageLogger())
-    sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip()
-    worksheet_name = os.getenv("GOOGLE_SHEET_LOG_TAB", "MessageLogs").strip()
-    credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-    credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
-    if sheet_id and truthy_env("MESSAGE_LOG_TO_GOOGLE_SHEETS", "false"):
-        loggers.append(GoogleSheetsMessageLogger(sheet_id, worksheet_name, credentials_file, credentials_json))
+    web_app_url = os.getenv("MESSAGE_LOG_APPS_SCRIPT_URL", "").strip()
+    secret = os.getenv("MESSAGE_LOG_APPS_SCRIPT_SECRET", "").strip()
+    if web_app_url and truthy_env("MESSAGE_LOG_TO_APPS_SCRIPT", "false"):
+        loggers.append(AppsScriptMessageLogger(web_app_url, secret))
 
     if loggers:
         return CompositeMessageLogger(loggers)

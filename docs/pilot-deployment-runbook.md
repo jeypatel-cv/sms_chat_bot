@@ -44,8 +44,8 @@ The app is now defaulted to this sheet ID:
 - `1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 
 Important:
-- if you use Google Sheets API with a service account, share the sheet with that service account email
-- if your host provides a default service identity, share the sheet with that identity too
+- if you are using Apps Script logging, the script writes as the sheet owner
+- keep a `MessageLogs` tab in the same spreadsheet for message records
 
 ### 2. Prepare Twilio
 Configure the inbound SMS webhook to:
@@ -69,8 +69,10 @@ Use:
 Minimum production variables:
 - `GOOGLE_SHEET_ID`
 - `GOOGLE_SHEET_TAB`
-- `GOOGLE_APPLICATION_CREDENTIALS` if using a JSON key file
-- `GOOGLE_APPLICATION_CREDENTIALS_JSON` if the host stores secrets as environment variables
+- `MESSAGE_LOG_TO_CONSOLE=true`
+- `MESSAGE_LOG_TO_APPS_SCRIPT=true`
+- `MESSAGE_LOG_APPS_SCRIPT_URL`
+- `MESSAGE_LOG_APPS_SCRIPT_SECRET`
 - `TWILIO_ACCOUNT_SID`
 - `TWILIO_AUTH_TOKEN`
 - `TWILIO_FROM_NUMBER` or `TWILIO_MESSAGING_SERVICE_SID`
@@ -118,7 +120,7 @@ Use these in order:
 ## Pilot Launch Checklist
 
 - [ ] Google Sheet filled with 5 to 10 properties
-- [ ] service account has read access to the sheet
+- [ ] Apps Script web app is deployed and reachable
 - [ ] cloud service deployed over HTTPS
 - [ ] Twilio webhook points to the deployed URL
 - [ ] webhook validation is enabled

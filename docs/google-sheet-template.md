@@ -24,7 +24,7 @@ Use one worksheet tab named `Properties` with these column headers in row 1:
 
 If you want to store inbound and outbound SMS records in the same spreadsheet, add a second worksheet tab named `MessageLogs` with these column headers in row 1.
 
-This is optional and only used when `MESSAGE_LOG_TO_GOOGLE_SHEETS=true`.
+This is optional and used when the backend logs messages into the sheet.
 
 | timestamp | direction | from_number | to_number | message_text | property_id | intent | status | error |
 |---|---|---|---|---|---|---|---|---|
