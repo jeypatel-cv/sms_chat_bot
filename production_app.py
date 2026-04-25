@@ -552,6 +552,39 @@ class ConversationBrain:
         matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
         return budget, matches
 
+    def looks_like_new_property_reference(self, text: str) -> bool:
+        normalized = normalize(text)
+        compact_text = compact(text)
+        if re.search(r"\b\d{2,}\b", text):
+            return True
+        street_terms = {
+            "street",
+            "st",
+            "road",
+            "rd",
+            "lane",
+            "ln",
+            "drive",
+            "dr",
+            "boulevard",
+            "blvd",
+            "court",
+            "ct",
+            "place",
+            "pl",
+            "parkway",
+            "pkwy",
+            "trail",
+            "trl",
+            "way",
+            "wy",
+            "circle",
+            "cir",
+            "avenue",
+            "ave",
+        }
+        return any(term in normalized.split() for term in street_terms) or any(term in compact_text.split() for term in street_terms)
+
     def find_property(self, text: str, session: dict[str, Any]) -> tuple[PropertyRecord | None, str | None]:
         properties = self.load_properties()
         normalized = normalize(text)
@@ -614,6 +647,10 @@ class ConversationBrain:
             session["property_id"] = best_prop.property_id
             session["last_match_type"] = best_match_type
             return best_prop, best_match_type
+
+        if self.looks_like_new_property_reference(text):
+            session["last_match_type"] = None
+            return None, None
 
         property_id = session.get("property_id")
         if property_id:
