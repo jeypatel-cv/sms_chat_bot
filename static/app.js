@@ -9,12 +9,17 @@ const resetBtn = document.getElementById("resetBtn");
 const smokeBtn = document.getElementById("smokeBtn");
 const smokeStatus = document.getElementById("smokeStatus");
 const smokeResults = document.getElementById("smokeResults");
+const versionLine = document.getElementById("versionLine");
+const releaseNotesLink = document.getElementById("releaseNotesLink");
+
+const smokeComplaintPrompt = "I called a number of times now, but have gotten no response :-(";
+const smokeBudgetPrompt = "Show me anything under 2300";
 
 const prompts = [
-  "Is 123 Main St available?",
-  "How much is rent for Maple Ridge Apartments?",
-  "How many bedrooms and bathrooms does 45 Cedar Park Blvd have?",
-  "When is Sycamore Flats available from?",
+  "1913 Ridge Creek Ln",
+  "How much is rent?",
+  smokeComplaintPrompt,
+  smokeBudgetPrompt,
   "Can I speak to a human?",
 ];
 
@@ -86,6 +91,24 @@ async function loadProperties() {
   const data = await res.json();
   properties = data.properties || [];
   renderProperties(properties);
+}
+
+async function loadAppInfo() {
+  try {
+    const res = await fetch("/api/app-info");
+    if (!res.ok) return;
+    const data = await res.json();
+    if (versionLine && data.version) {
+      versionLine.textContent = `${data.app_name || "App"} v${data.version}`;
+    }
+    if (releaseNotesLink && data.release_notes_url) {
+      releaseNotesLink.href = data.release_notes_url;
+    }
+  } catch (err) {
+    if (versionLine) {
+      versionLine.textContent = "Version unavailable";
+    }
+  }
 }
 
 function setSmokeStatus(text) {
@@ -172,7 +195,7 @@ async function runSmokeTest(auto = false) {
       );
     }
 
-    const handoff = await postMessage(smokePhone, "I have called a number of times now, but have gotten no response :-(");
+    const handoff = await postMessage(smokePhone, smokeComplaintPrompt);
     const handoffOk = handoff.intent === "human_handoff";
     renderSmokeResult(
       "Complaint-style handoff message",
@@ -181,7 +204,7 @@ async function runSmokeTest(auto = false) {
     );
 
     await resetPhone(smokePhone);
-    const budget = await postMessage(smokePhone, "Show me anything under 999999");
+    const budget = await postMessage(smokePhone, smokeBudgetPrompt);
     const budgetOk = budget.intent === "budget_list";
     renderSmokeResult(
       "Budget lookup fallback",
@@ -247,9 +270,8 @@ messageInput.addEventListener("keydown", (event) => {
 });
 
 renderPrompts();
-loadProperties().then(() => {
-  runSmokeTest(true);
-});
+loadAppInfo();
+loadProperties();
 resetConversation();
 
 if (propertyFilter) {
