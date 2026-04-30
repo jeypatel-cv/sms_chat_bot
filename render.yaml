@@ -1,8 +1,8 @@
 services:
   - type: web
     name: vp-realty-sms-pilot
-    env: python
-    plan: free
+    runtime: python
+    plan: starter
     buildCommand: pip install -r requirements.txt
     startCommand: python production_app.py
     healthCheckPath: /healthz

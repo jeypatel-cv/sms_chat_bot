@@ -555,8 +555,6 @@ class ConversationBrain:
     def looks_like_new_property_reference(self, text: str) -> bool:
         normalized = normalize(text)
         compact_text = compact(text)
-        if re.search(r"\b\d{2,}\b", text):
-            return True
         street_terms = {
             "street",
             "st",
@@ -583,10 +581,87 @@ class ConversationBrain:
             "avenue",
             "ave",
         }
+        street_pattern = r"\b\d+\s+(?:[a-z0-9]+\s+){0,4}(?:" + "|".join(street_terms) + r")\b"
+        if re.search(street_pattern, normalized):
+            return True
+        if re.search(r"\b(?:apt|apartment|suite|unit)\s*\d+\b", normalized):
+            return True
         return any(term in normalized.split() for term in street_terms) or any(term in compact_text.split() for term in street_terms)
 
-    def find_property(self, text: str, session: dict[str, Any]) -> tuple[PropertyRecord | None, str | None]:
-        properties = self.load_properties()
+    def looks_like_explicit_property_reference(self, text: str) -> bool:
+        normalized = normalize(text)
+        if self.looks_like_new_property_reference(text):
+            return True
+
+        property_terms = {
+            "apartment",
+            "apartments",
+            "home",
+            "homes",
+            "house",
+            "houses",
+            "townhome",
+            "townhomes",
+            "condo",
+            "condos",
+            "community",
+            "residence",
+            "residences",
+            "village",
+            "villages",
+            "villa",
+            "villas",
+            "estate",
+            "estates",
+            "flats",
+            "lofts",
+        }
+        if any(term in normalized.split() for term in property_terms):
+            return True
+        if re.search(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,4}\b", text):
+            return True
+        return False
+
+    def looks_like_followup_question(self, text: str) -> bool:
+        normalized = normalize(text)
+        words = normalized.split()
+        if not words:
+            return False
+        if self.looks_like_explicit_property_reference(text):
+            return False
+
+        followup_phrases = [
+            "how much",
+            "what is",
+            "what's",
+            "when is",
+            "is it",
+            "available",
+            "rent",
+            "price",
+            "cost",
+            "fee",
+            "bed",
+            "bath",
+            "details",
+            "info",
+            "information",
+            "move in",
+            "move-in",
+        ]
+        if len(words) <= 6 and any(phrase in normalized for phrase in followup_phrases):
+            return True
+        if len(words) <= 4 and any(word in words for word in {"it", "this", "that", "there"}):
+            return True
+        return False
+
+    def find_property(
+        self,
+        text: str,
+        session: dict[str, Any],
+        properties: list[PropertyRecord] | None = None,
+    ) -> tuple[PropertyRecord | None, str | None]:
+        properties = properties or self.load_properties()
         normalized = normalize(text)
         compact_text = compact(text)
 
@@ -654,6 +729,9 @@ class ConversationBrain:
 
         property_id = session.get("property_id")
         if property_id:
+            if not self.looks_like_followup_question(text):
+                session["last_match_type"] = None
+                return None, None
             for prop in properties:
                 if prop.property_id == property_id:
                     return prop, "session"
@@ -668,19 +746,6 @@ class ConversationBrain:
         rooms = f"{bedrooms} bedrooms, {bathrooms} bathrooms"
         available_from = format_date(prop.available_from)
         availability = prop.availability or "unknown"
-        manager_name = prop.manager_name or prop.contact_owner or "the property manager"
-        manager_email = prop.manager_email.strip()
-        manager_phone = prop.manager_phone.strip()
-
-        def manager_contact_reply() -> str:
-            if manager_phone and manager_email:
-                return f"Please contact {manager_name} at {manager_phone} or {manager_email} for more details on {prop.name}."
-            if manager_phone:
-                return f"Please contact {manager_name} at {manager_phone} for more details on {prop.name}."
-            if manager_email:
-                return f"Please contact {manager_name} at {manager_email} for more details on {prop.name}."
-            return f"Please contact the leasing team for {prop.name} for more details."
-
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
             return f"{prop.name} is available from {available_from}."
         if any(word in normalized for word in ["rent", "price", "cost", "how much"]):
@@ -695,11 +760,14 @@ class ConversationBrain:
                 f"{rooms}, rent {rent} per month, and available from {available_from}."
             )
 
-        return manager_contact_reply()
+        return (
+            f"I don't have that detail in the current property data for {prop.name}. "
+            "I can connect you with the leasing team."
+        )
 
     def footer_for_property(self, prop: PropertyRecord | None) -> str:
         if prop is None:
-            return "Call the leasing team for details."
+            return "Call the leasing team at 972-591-8075."
 
         manager_email = prop.manager_email.strip()
         manager_phone = prop.manager_phone.strip()
@@ -709,7 +777,7 @@ class ConversationBrain:
             return f"Call {manager_phone} for details."
         if manager_email:
             return f"Email {manager_email} for details."
-        return "Call the leasing team for details."
+        return "Call the leasing team at 972-591-8075."
 
     def add_footer(self, reply: str, prop: PropertyRecord | None) -> str:
         footer = self.footer_for_property(prop)
@@ -722,18 +790,35 @@ class ConversationBrain:
     def respond(self, phone: str, text: str) -> dict[str, Any]:
         session = self.get_session(phone)
         self._handoff_is_active(session)
-        prop, match_type = self.find_property(text, session)
+        properties = self.load_properties()
+        prop, match_type = self.find_property(text, session, properties)
         normalized = normalize(text)
         reply = ""
         intent = "unknown"
 
         if session.get("human_handoff"):
             reply = self.add_footer(
-                "A leasing specialist has been notified. Please hold while we review your request.",
+                "A leasing specialist has been notified.",
                 prop,
             )
             intent = "handoff"
-        elif any(word in normalized for word in ["human", "agent", "person", "call me"]):
+        elif any(
+            word in normalized
+            for word in [
+                "human",
+                "agent",
+                "person",
+                "call me",
+                "called",
+                "no response",
+                "no reply",
+                "automated",
+                "voicemail",
+                "left a message",
+                "return call",
+                "trying the other numbers",
+            ]
+        ):
             session["human_handoff"] = True
             ttl_seconds = int(os.getenv("HANDOFF_TTL_SECONDS", str(DEFAULT_HANDOFF_TTL_SECONDS)))
             session["human_handoff_until"] = (
@@ -748,12 +833,27 @@ class ConversationBrain:
             )
             intent = "human_handoff"
         elif prop is None:
-            city, city_matches = self.find_city_matches(text, self.load_properties())
-            if city_matches:
+            city, city_matches = self.find_city_matches(text, properties)
+            budget, budget_matches = self.find_budget_matches(text, properties)
+            if city and budget is not None:
+                city_budget_matches = [
+                    prop
+                    for prop in city_matches
+                    if prop.rent_per_month is not None and prop.rent_per_month <= budget
+                ]
+                if city_budget_matches:
+                    city_budget_matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
+                    reply = self.add_footer(
+                        self.list_properties_reply(city_budget_matches, f"{city} under ${int(budget):,}"),
+                        None,
+                    )
+                else:
+                    reply = self.add_footer(f"I could not find any properties in {city} under ${int(budget):,}.", None)
+                intent = "budget_list"
+            elif city_matches:
                 reply = self.add_footer(self.list_properties_reply(city_matches, city), None)
                 intent = "area_list"
             else:
-                budget, budget_matches = self.find_budget_matches(text, self.load_properties())
                 if budget_matches:
                     reply = self.add_footer(
                         self.list_properties_reply(budget_matches, f"${int(budget):,} budget"),
@@ -941,8 +1041,8 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
                 return self._send_xml(self._voice_twiml("Forbidden"), status=403)
 
             voice_message = (
-                "Thanks for calling VP Realty. Please send us a text message with your question, "
-                "and our agent will reply to your message."
+                "Thanks for contacting VP Realty. Text 214-206-4345 with your question, "
+                "and an agent will reply shortly."
             )
             self._log_message(
                 MessageLogRecord(

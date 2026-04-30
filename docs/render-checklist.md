@@ -35,8 +35,8 @@ After deploy, verify:
 - `POST /demo/message`
 
 Suggested smoke-test messages:
-- `123 Main St`
-- `45 Cedar Park`
+- `1913 Ridge Creek Ln`
+- `3136 Overlook Drive`
 - `How much is rent?`
 
 ## Phase 2: Production-Like Setup
@@ -153,8 +153,8 @@ And add:
   - `POST https://vp-realty-sms-pilot.onrender.com/twilio/sms`
 
 ### Step 6: Test the live SMS flow
-- Text `123 Main St`
-- Text `45 Cedar Park`
+- Text `1913 Ridge Creek Ln`
+- Text `3136 Overlook Drive`
 - Text `How much is rent?`
 - Text `Can I speak to a human?`
 

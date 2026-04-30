@@ -42,10 +42,10 @@ This keeps local and server-side tests aligned on the same property set.
 
 ## Test prompts
 
-- Is 123 Main St available?
-- How much is rent for Maple Ridge Apartments?
-- How many bedrooms and bathrooms does 45 Cedar Park Blvd have?
-- When is Sycamore Flats available from?
+- Is 1913 Ridge Creek Ln available?
+- How much is rent for 1913 Ridge Creek Ln?
+- How many bedrooms and bathrooms does 3136 Overlook Drive have?
+- When is 106 Sunberry Drive available from?
 - Can I speak to a human?
 
 ## Files

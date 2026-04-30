@@ -10,6 +10,7 @@ This folder holds the planning and deployment notes for the VP Realty SMS pilot.
 ## Setup
 
 - [Google Sheet Template](google-sheet-template.md)
+- [Problem Logs](problem-logs.md)
 - [Production Setup](production-setup.md)
 - [Pilot Deployment Runbook](pilot-deployment-runbook.md)
 - [Render Free Deployment](render-free-deployment.md)

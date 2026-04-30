@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>VP Realty SMS AI POC</title>
+  <title>SMS AI Chat Bot - Test Page</title>
   <link rel="stylesheet" href="/static/styles.css" />
 </head>
 <body>
@@ -11,14 +11,14 @@
     <section class="hero">
       <div>
         <p class="eyebrow">VP Realty POC</p>
-        <h1>SMS AI Assistant Demo</h1>
+        <h1>SMS AI Chat Bot - Test Page</h1>
         <p class="lede">
-          Simulate a customer texting the official number and see an AI-style reply using dummy property data.
+          Simulate a customer texting the official number and see an AI-style reply using the live properties loaded by the service.
         </p>
       </div>
       <div class="status-card">
-        <div><span>Mode</span><strong>Local demo</strong></div>
-        <div><span>Data</span><strong>Dummy properties</strong></div>
+        <div><span>Mode</span><strong>Test page</strong></div>
+        <div><span>Data</span><strong>Loaded properties</strong></div>
         <div><span>Channel</span><strong>SMS simulator</strong></div>
       </div>
     </section>
@@ -52,11 +52,23 @@
         <div class="panel-card">
           <h3>How it works</h3>
           <ul>
-            <li>Dummy property data lives in the local JSON file.</li>
+            <li>The page reads the same properties source used by the backend.</li>
             <li>The server finds the property, checks the intent, and crafts a reply.</li>
             <li>If the customer is vague, it asks for an address or listing ID.</li>
             <li>Human handoff is simulated by the responder logic.</li>
           </ul>
+        </div>
+
+        <div class="panel-card">
+          <h3>Smoke Test</h3>
+          <p class="smoke-copy">
+            Run a quick automated check of the live property responses after deployment or anytime you want to verify the bot.
+          </p>
+          <div class="smoke-actions">
+            <button id="smokeBtn" class="primary-btn">Run smoke test</button>
+            <span id="smokeStatus" class="smoke-status">Idle</span>
+          </div>
+          <div id="smokeResults" class="smoke-results"></div>
         </div>
 
         <div class="panel-card">

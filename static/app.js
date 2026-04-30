@@ -6,6 +6,9 @@ const phoneInput = document.getElementById("phoneInput");
 const messageInput = document.getElementById("messageInput");
 const sendBtn = document.getElementById("sendBtn");
 const resetBtn = document.getElementById("resetBtn");
+const smokeBtn = document.getElementById("smokeBtn");
+const smokeStatus = document.getElementById("smokeStatus");
+const smokeResults = document.getElementById("smokeResults");
 
 const prompts = [
   "Is 123 Main St available?",
@@ -16,6 +19,7 @@ const prompts = [
 ];
 
 let properties = [];
+const smokePhone = "+15555559099";
 
 function esc(text) {
   return text
@@ -84,6 +88,118 @@ async function loadProperties() {
   renderProperties(properties);
 }
 
+function setSmokeStatus(text) {
+  if (smokeStatus) {
+    smokeStatus.textContent = text;
+  }
+}
+
+function formatSmokeTime(date) {
+  return new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function renderSmokeResult(label, ok, detail) {
+  if (!smokeResults) return;
+  const row = document.createElement("div");
+  row.className = `smoke-result ${ok ? "pass" : "fail"}`;
+  row.innerHTML = `<strong>${esc(ok ? "PASS" : "FAIL")}:</strong> ${esc(label)}${detail ? `<br />${esc(detail)}` : ""}`;
+  smokeResults.appendChild(row);
+}
+
+function pickSmokeProperty(items) {
+  const liveProperty = items.find((p) => typeof p.property_id === "string" && p.property_id.trim().length > 0 && p.address);
+  return liveProperty || items[0] || null;
+}
+
+async function postMessage(phone, text) {
+  const res = await fetch("/api/message", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phone, text }),
+  });
+  return res.json();
+}
+
+async function resetPhone(phone) {
+  await fetch(`/api/reset?phone=${encodeURIComponent(phone)}`, { method: "POST" });
+}
+
+async function runSmokeTest(auto = false) {
+  if (smokeBtn) {
+    smokeBtn.disabled = true;
+  }
+  setSmokeStatus(auto ? "Running auto smoke test..." : "Running smoke test...");
+  if (smokeResults) {
+    smokeResults.innerHTML = "";
+  }
+
+  try {
+    await resetPhone(smokePhone);
+
+    const healthRes = await fetch("/healthz");
+    const healthText = (await healthRes.text()).trim();
+    renderSmokeResult("Health endpoint returns ok", healthRes.ok && healthText === "ok", `status=${healthRes.status}, body=${healthText || "-"}`);
+
+    const propRes = await fetch("/api/properties");
+    const propData = await propRes.json();
+    const smokeProps = propData.properties || [];
+    const sample = pickSmokeProperty(smokeProps);
+    renderSmokeResult("Property list loads", propRes.ok && smokeProps.length > 0, `properties=${smokeProps.length}`);
+
+    if (!sample) {
+      setSmokeStatus("Smoke test failed");
+      return;
+    }
+
+    const exact = await postMessage(smokePhone, sample.address);
+    const exactOk = exact.intent === "property_qna" && typeof exact.reply === "string" && exact.reply.length > 0;
+    renderSmokeResult(
+      `Exact address lookup for ${sample.address}`,
+      exactOk,
+      `intent=${exact.intent || "-"} | reply=${exact.reply || "-"}`
+    );
+
+    if (sample.city) {
+      const city = await postMessage(smokePhone, sample.city);
+      const cityOk = city.intent === "area_list" || city.intent === "budget_list";
+      renderSmokeResult(
+        `City lookup for ${sample.city}`,
+        cityOk,
+        `intent=${city.intent || "-"} | reply=${city.reply || "-"}`
+      );
+    }
+
+    const handoff = await postMessage(smokePhone, "I have called a number of times now, but have gotten no response :-(");
+    const handoffOk = handoff.intent === "human_handoff";
+    renderSmokeResult(
+      "Complaint-style handoff message",
+      handoffOk,
+      `intent=${handoff.intent || "-"} | reply=${handoff.reply || "-"}`
+    );
+
+    await resetPhone(smokePhone);
+    const budget = await postMessage(smokePhone, "Show me anything under 999999");
+    const budgetOk = budget.intent === "budget_list";
+    renderSmokeResult(
+      "Budget lookup fallback",
+      budgetOk,
+      `intent=${budget.intent || "-"} | reply=${budget.reply || "-"}`
+    );
+
+    setSmokeStatus(`Smoke test passed at ${formatSmokeTime(new Date())}`);
+  } catch (err) {
+    renderSmokeResult("Smoke test execution", false, err?.message || String(err));
+    setSmokeStatus("Smoke test failed");
+  } finally {
+    if (smokeBtn) {
+      smokeBtn.disabled = false;
+    }
+  }
+}
+
 function refreshPropertyList() {
   renderProperties(filteredProperties());
 }
@@ -121,6 +237,9 @@ async function resetConversation() {
 
 sendBtn.addEventListener("click", sendMessage);
 resetBtn.addEventListener("click", resetConversation);
+if (smokeBtn) {
+  smokeBtn.addEventListener("click", () => runSmokeTest(false));
+}
 messageInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) {
     sendMessage();
@@ -128,7 +247,9 @@ messageInput.addEventListener("keydown", (event) => {
 });
 
 renderPrompts();
-loadProperties();
+loadProperties().then(() => {
+  runSmokeTest(true);
+});
 resetConversation();
 
 if (propertyFilter) {
