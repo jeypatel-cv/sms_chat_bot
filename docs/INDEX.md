@@ -10,7 +10,9 @@ This folder holds the planning and deployment notes for the VP Realty SMS pilot.
 ## Setup
 
 - [Google Sheet Template](google-sheet-template.md)
+- [Schema Migration Note](schema-migration-note.md)
 - [Problem Logs](problem-logs.md)
+- [Release Notes](release-notes.md)
 - [Production Setup](production-setup.md)
 - [Pilot Deployment Runbook](pilot-deployment-runbook.md)
 - [Render Free Deployment](render-free-deployment.md)
@@ -18,7 +20,7 @@ This folder holds the planning and deployment notes for the VP Realty SMS pilot.
 
 ## Data
 
-- [Live Export CSV](../data/vp_properties_live_export.csv)
+- [Leasing Snapshot CSV](../data/LeasingSnapshot%20-%20ChatBotClient.csv)
 
 ## Workspace
 

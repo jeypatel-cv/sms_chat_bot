@@ -21,7 +21,7 @@ If you set the fields manually, use:
 Set these environment variables:
 - `PYTHON_VERSION=3.13.5`
 - `HOST=0.0.0.0`
-- `PROPERTIES_CSV_PATH=data/vp_properties_live_export.csv`
+- `PROPERTIES_CSV_PATH=data/LeasingSnapshot - ChatBotClient.csv`
 - `PROPERTIES_SOURCE_URL=` if you have a direct CSV or JSON export URL
 - `TWILIO_ALLOW_MOCK=true`
 - `TWILIO_VALIDATE_REQUESTS=false`
@@ -36,8 +36,11 @@ After deploy, verify:
 
 Suggested smoke-test messages:
 - `1913 Ridge Creek Ln`
-- `3136 Overlook Drive`
 - `How much is rent?`
+- `Is it available?`
+- `How many bedrooms and bathrooms does this property have?`
+- `When is it available from?`
+- `Who should I contact for details?`
 
 ## Phase 2: Production-Like Setup
 
@@ -85,8 +88,8 @@ For real SMS testing, keep these in Render:
 - `TWILIO_VALIDATE_REQUESTS=true`
 - `TWILIO_ALLOW_MOCK=false`
 
-If you are still using the live export CSV for now, keep:
-- `PROPERTIES_CSV_PATH=data/vp_properties_live_export.csv`
+If you are still using CSV for now, keep:
+- `PROPERTIES_CSV_PATH=data/LeasingSnapshot - ChatBotClient.csv`
 
 If you want Google Sheets later, remove:
 - `PROPERTIES_CSV_PATH`
@@ -123,7 +126,7 @@ In Render, add or update:
 - `TWILIO_ALLOW_MOCK=false`
 
 If you are staying on CSV for one more test round, keep:
-- `PROPERTIES_CSV_PATH=data/vp_properties_live_export.csv`
+- `PROPERTIES_CSV_PATH=data/LeasingSnapshot - ChatBotClient.csv`
 
 If you have a raw remote export, you can use:
 - `PROPERTIES_SOURCE_URL=https://...`
@@ -154,8 +157,11 @@ And add:
 
 ### Step 6: Test the live SMS flow
 - Text `1913 Ridge Creek Ln`
-- Text `3136 Overlook Drive`
 - Text `How much is rent?`
+- Text `Is it available?`
+- Text `How many bedrooms and bathrooms does this property have?`
+- Text `When is it available from?`
+- Text `Who should I contact for details?`
 - Text `Can I speak to a human?`
 
 ## What Good Looks Like

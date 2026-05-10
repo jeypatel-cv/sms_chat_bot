@@ -95,7 +95,7 @@ The POC only needs a small, clean property dataset.
 - property ID
 - property name
 - full address
-- unit or listing ID
+- unit number or unit ID
 - rent
 - bedroom count
 - bathroom count
@@ -131,7 +131,7 @@ The POC only needs a small, clean property dataset.
 
 ### Example clarification
 If a customer says "Is it available?" and no property is referenced:
-- ask for the address or listing ID
+- ask for the address, unit number, or property name
 
 ## 10. Human Handoff
 
@@ -233,7 +233,7 @@ Measure the POC by:
 ## 15. Risks
 
 - data quality issues in the source system
-- ambiguity when customers do not mention an address or listing ID
+- ambiguity when customers do not mention an address, unit number, or property name
 - over-automation if escalation is not tuned well
 - Twilio webhook configuration mistakes
 - Google Sheets formatting or permission issues
@@ -266,7 +266,7 @@ After the POC works, expand into:
 
 ## 19. Current Working Data Set
 
-For the current pilot, the working local test data is the live vacancies export CSV:
-- `data/vp_properties_live_export.csv`
+For the current pilot, the working local test data is the LeasingSnapshot CSV:
+- `data/LeasingSnapshot - ChatBotClient.csv`
 
 That file is used to keep local testing aligned with server-side testing.

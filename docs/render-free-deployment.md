@@ -50,7 +50,7 @@ Set these in the Render dashboard:
 
 ## Google Sheets Access
 
-The backend reads property data from Google Sheets.
+The backend reads property data from Google Sheets using the LeasingSnapshot column set.
 For message logging, it posts to the Apps Script web app.
 
 ## Twilio Webhook

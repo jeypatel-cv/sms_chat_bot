@@ -41,6 +41,7 @@ STATIC_DIR = BASE_DIR / "static"
 DEFAULT_CACHE_TTL_SECONDS = 300
 DEFAULT_GOOGLE_SHEET_ID = "1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44"
 DEFAULT_HANDOFF_TTL_SECONDS = 900
+APP_VERSION = "1.1"
 
 
 def normalize(text: str) -> str:
@@ -57,6 +58,10 @@ def tokens(text: str) -> set[str]:
 
 def street_line(address: str) -> str:
     return address.split(",")[0]
+
+
+def canonical_header(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "_", normalize(name)).strip("_")
 
 
 def format_date(value: str | None) -> str:
@@ -85,6 +90,128 @@ def parse_number(value: Any) -> float | int | None:
 
 def truthy_env(name: str, default: str = "true") -> bool:
     return os.getenv(name, default).strip().lower() in {"1", "true", "yes", "on"}
+
+
+PROPERTY_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
+    "property_id": ("property_id", "id"),
+    "name": ("property_name", "name", "property", "property_title"),
+    "address": ("street_address", "address", "full_address", "property_address", "location"),
+    "city": ("city", "town"),
+    "rent_per_month": (
+        "rent",
+        "rent_per_month",
+        "monthly_rent",
+        "price",
+        "advertised_rent",
+        "schd_rent",
+        "new_rent",
+        "computed_market_rent",
+    ),
+    "bedrooms": ("bedrooms", "beds", "bed"),
+    "bathrooms": ("bathrooms", "baths", "bath"),
+    "bed_and_bath": ("bed_and_bath", "beds_baths", "bedbath"),
+    "availability": ("availability_status", "availability", "status", "unit_status", "rent_ready"),
+    "available_from": (
+        "available_from",
+        "availability_date",
+        "available_on",
+        "next_move_in",
+        "ready_for_showing_on",
+        "available date",
+        "move_in_date",
+        "move in date",
+    ),
+    "description": ("description", "summary", "remarks", "notes"),
+    "manager_name": ("manager_name", "manager", "leasing_agent", "contact_name"),
+    "manager_email": ("manager_email", "manager email", "email", "contact_email"),
+    "manager_phone": ("manager_phone", "contact_phone", "phone", "manager phone"),
+    "contact_owner": ("contact_owner", "leasing_owner", "owner_email"),
+    "contact_info": ("contact_info", "contact", "leasing_contact"),
+}
+
+
+def normalize_row(row: dict[str, Any]) -> dict[str, Any]:
+    normalized: dict[str, Any] = {}
+    for key, value in row.items():
+        normalized[canonical_header(str(key))] = value
+    return normalized
+
+
+def first_row_value(row: dict[str, Any], *candidates: str) -> Any:
+    for candidate in candidates:
+        value = row.get(canonical_header(candidate))
+        if value not in (None, ""):
+            return value
+    return ""
+
+
+def coerce_text(value: Any) -> str:
+    return str(value).strip()
+
+
+def coerce_optional_text(value: Any) -> str | None:
+    text = coerce_text(value)
+    return text or None
+
+
+def parse_contact_info(value: Any) -> tuple[str, str, str]:
+    text = coerce_text(value)
+    if not text:
+        return "", "", ""
+
+    chunks = [chunk.strip() for chunk in re.split(r"\s*:\s*", text) if chunk.strip()]
+    if not chunks:
+        return "", "", ""
+
+    name = chunks[0]
+    email = ""
+    phone = ""
+    for chunk in chunks[1:]:
+        if not email and "@" in chunk:
+            email = chunk
+            continue
+        if not phone:
+            phone = chunk
+            continue
+        if not name:
+            name = chunk
+
+    if not email:
+        email_match = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", text)
+        if email_match:
+            email = email_match.group(0)
+
+    if not phone:
+        phone_match = re.search(r"(\(?\+?\d[\d\s().-]{7,}\d\)?)", text)
+        if phone_match:
+            phone = phone_match.group(1).strip()
+
+    if not name and text:
+        name = text.split(":")[0].strip()
+
+    return name, email, phone
+
+
+def parse_bed_and_bath(value: Any) -> tuple[int | None, int | None]:
+    text = coerce_text(value)
+    if not text:
+        return None, None
+
+    match = re.search(r"(\d+(?:\.\d+)?)\s*/\s*(\d+(?:\.\d+)?)", text)
+    if match:
+        return parse_number(match.group(1)), parse_number(match.group(2))
+
+    numbers = [parse_number(part) for part in re.findall(r"\d+(?:\.\d+)?", text)]
+    numbers = [number for number in numbers if number is not None]
+    if len(numbers) >= 2:
+        return numbers[0], numbers[1]
+    if len(numbers) == 1:
+        return numbers[0], None
+    return None, None
+
+
+def join_nonempty(*parts: Any, separator: str = " ") -> str:
+    return separator.join(part.strip() for part in map(coerce_text, parts) if part.strip())
 
 
 def build_google_credentials(scopes: list[str], credentials_file: str, credentials_json: str):
@@ -119,31 +246,73 @@ class PropertyRecord:
     manager_email: str = ""
     manager_phone: str = ""
     contact_owner: str = ""
-    listing_id: str = ""
 
     @classmethod
     def from_row(cls, row: dict[str, Any]) -> "PropertyRecord":
+        normalized_row = normalize_row(row)
+        property_id = coerce_text(
+            first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["property_id"])
+        )
+        name = coerce_text(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["name"]))
+        address = coerce_text(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["address"]))
+        city = coerce_text(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["city"]))
+        street = coerce_text(first_row_value(normalized_row, "street"))
+        street2 = coerce_text(first_row_value(normalized_row, "street2"))
+        state = coerce_text(first_row_value(normalized_row, "state"))
+        zip_code = coerce_text(first_row_value(normalized_row, "zip"))
+        if not city and address and "," in address:
+            address_parts = [part.strip() for part in address.split(",") if part.strip()]
+            if len(address_parts) >= 2:
+                city = address_parts[1]
+        if not address and street:
+            address = join_nonempty(street, street2, city, state, zip_code, separator=", ")
+        if not address and name:
+            address = name
+        if not name and address:
+            name = street_line(address)
+        combined_contact_name, combined_contact_email, combined_contact_phone = parse_contact_info(
+            first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["contact_info"])
+        )
+        manager_name = coerce_text(
+            first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["manager_name"])
+            or combined_contact_name
+            or first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["contact_owner"])
+        )
+        manager_email = coerce_text(
+            first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["manager_email"])
+            or combined_contact_email
+            or first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["contact_owner"])
+        )
+        manager_phone = coerce_text(
+            first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["manager_phone"])
+            or combined_contact_phone
+        )
+        contact_owner = coerce_text(
+            first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["contact_owner"])
+            or combined_contact_email
+        )
+        bed_and_bath = first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["bed_and_bath"])
+        bedrooms = parse_number(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["bedrooms"]))
+        bathrooms = parse_number(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["bathrooms"]))
+        if bedrooms is None and bathrooms is None:
+            bedrooms, bathrooms = parse_bed_and_bath(bed_and_bath)
         return cls(
-            property_id=str(row.get("property_id", "")).strip(),
-            name=str(row.get("property_name", row.get("name", ""))).strip(),
-            address=str(
-                row.get(
-                    "street_address",
-                    row.get("address", ""),
-                )
-            ).strip(),
-            city=str(row.get("city", "")).strip(),
-            rent_per_month=parse_number(row.get("rent")),
-            bedrooms=parse_number(row.get("bedrooms")),
-            bathrooms=parse_number(row.get("bathrooms")),
-            availability=str(row.get("availability_status", row.get("availability", ""))).strip(),
-            available_from=str(row.get("available_from", "")).strip() or None,
-            description=str(row.get("description", "")).strip(),
-            manager_name=str(row.get("manager_name", row.get("contact_owner", ""))).strip(),
-            manager_email=str(row.get("Manager Email", row.get("manager_email", ""))).strip(),
-            manager_phone=str(row.get("manager_phone", row.get("contact_phone", ""))).strip(),
-            contact_owner=str(row.get("contact_owner", "")).strip(),
-            listing_id=str(row.get("listing_id", "")).strip(),
+            property_id=property_id,
+            name=name,
+            address=address,
+            city=city,
+            rent_per_month=parse_number(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["rent_per_month"])),
+            bedrooms=bedrooms,
+            bathrooms=bathrooms,
+            availability=coerce_text(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["availability"])),
+            available_from=coerce_optional_text(
+                first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["available_from"])
+            ),
+            description=coerce_text(first_row_value(normalized_row, *PROPERTY_FIELD_ALIASES["description"])),
+            manager_name=manager_name,
+            manager_email=manager_email,
+            manager_phone=manager_phone,
+            contact_owner=contact_owner,
         )
 
 
@@ -165,7 +334,7 @@ class GoogleSheetsPropertyStore(PropertyStore):
         self.worksheet_name = worksheet_name
         self.credentials_file = credentials_file
         self.credentials_json = credentials_json
-        self.range_name = range_name or f"{worksheet_name}!A:Z"
+        self.range_name = range_name or f"{worksheet_name}!A:AZ"
         self._cached_at: datetime | None = None
         self._cached_records: list[PropertyRecord] = []
 
@@ -472,6 +641,15 @@ class ConversationBrain:
             return False
         return True
 
+    def _session_property(self, session: dict[str, Any], properties: list[PropertyRecord]) -> PropertyRecord | None:
+        property_id = coerce_text(session.get("property_id"))
+        if not property_id:
+            return None
+        for prop in properties:
+            if coerce_text(prop.property_id) == property_id:
+                return prop
+        return None
+
     def load_properties(self) -> list[PropertyRecord]:
         return self.property_store.load()
 
@@ -631,11 +809,13 @@ class ConversationBrain:
             return False
 
         followup_phrases = [
+            "how many",
             "how much",
             "what is",
             "what's",
             "when is",
             "is it",
+            "does this property have",
             "available",
             "rent",
             "price",
@@ -649,7 +829,7 @@ class ConversationBrain:
             "move in",
             "move-in",
         ]
-        if len(words) <= 6 and any(phrase in normalized for phrase in followup_phrases):
+        if len(words) <= 12 and any(phrase in normalized for phrase in followup_phrases):
             return True
         if len(words) <= 4 and any(word in words for word in {"it", "this", "that", "there"}):
             return True
@@ -680,9 +860,6 @@ class ConversationBrain:
                 return 100, "exact"
             if prop.property_id.lower() in normalized or prop.name.lower() in normalized:
                 return 100, "exact"
-            if prop.listing_id and prop.listing_id.lower() in normalized:
-                return 100, "exact"
-
             overlap = street_tokens & input_tokens
             if overlap:
                 score += len(overlap) * 20
@@ -705,7 +882,6 @@ class ConversationBrain:
                 prop.address.lower(),
                 street_line(prop.address).lower(),
                 prop.name.lower(),
-                prop.listing_id.lower() if prop.listing_id else "",
             ]
             if any(candidate and candidate in normalized for candidate in candidates):
                 session["property_id"] = prop.property_id
@@ -793,8 +969,14 @@ class ConversationBrain:
         properties = self.load_properties()
         prop, match_type = self.find_property(text, session, properties)
         normalized = normalize(text)
+        detail_terms = ("bedroom", "bathroom", "bedrooms", "bathrooms", "bed", "bath", "how many")
         reply = ""
         intent = "unknown"
+
+        if prop is None and session.get("property_id") and any(term in normalized for term in detail_terms):
+            prop = self._session_property(session, properties)
+            if prop is not None:
+                match_type = "session"
 
         if session.get("human_handoff"):
             reply = self.add_footer(
@@ -869,6 +1051,15 @@ class ConversationBrain:
                         None,
                     )
                     intent = "clarify_property"
+            if intent == "clarify_property" and session.get("property_id") and any(
+                term in normalized for term in detail_terms
+            ):
+                session_prop = self._session_property(session, properties)
+                if session_prop is not None:
+                    prop = session_prop
+                    match_type = "session"
+                    intent = "property_qna"
+                    reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
         elif match_type == "partial":
             reply = self.add_footer(
                 (
@@ -966,6 +1157,37 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/healthz":
             return self._send_text("ok")
+        if parsed.path == "/api/app-info":
+            return self._send_json(
+                {
+                    "app_name": "VP Realty SMS Pilot",
+                    "version": APP_VERSION,
+                    "release_notes_url": "/release-notes",
+                }
+            )
+        if parsed.path == "/release-notes":
+            notes_path = BASE_DIR / "docs" / "release-notes.md"
+            if not notes_path.exists() or not notes_path.is_file():
+                return self.send_error(HTTPStatus.NOT_FOUND, "File not found")
+            notes_text = escape(notes_path.read_text(encoding="utf-8"))
+            return self._send_text(
+                f"""<html>
+  <head>
+    <title>Release Notes - VP Realty SMS Pilot</title>
+    <meta charset="utf-8" />
+    <style>
+      body {{ font-family: Arial, sans-serif; margin: 32px; line-height: 1.6; }}
+      pre {{ white-space: pre-wrap; background: #f7f7f7; padding: 16px; border-radius: 8px; }}
+      a {{ color: #0b66ff; }}
+    </style>
+  </head>
+  <body>
+    <p><a href="/demo">Back to demo</a></p>
+    <pre>{notes_text}</pre>
+  </body>
+</html>""",
+                content_type="text/html; charset=utf-8",
+            )
         if parsed.path == "/":
             return self._send_text(
                 """<html>
@@ -984,6 +1206,7 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
     <ul>
       <li><a href="/healthz">/healthz</a></li>
       <li><a href="/demo">/demo</a></li>
+      <li><a href="/api/app-info">/api/app-info</a></li>
       <li><code>/twilio/sms</code> for inbound SMS webhooks</li>
     </ul>
   </body>
@@ -1223,13 +1446,17 @@ def build_store_from_env() -> PropertyStore:
     if source_url:
         return RemotePropertyStore(source_url, source_format)
 
-    sheet_id = os.getenv("GOOGLE_SHEET_ID", DEFAULT_GOOGLE_SHEET_ID).strip()
+    sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip() or DEFAULT_GOOGLE_SHEET_ID
     worksheet_name = os.getenv("GOOGLE_SHEET_TAB", "Properties").strip()
     credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
     credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
 
-    if sheet_id:
+    if sheet_id and (credentials_file or credentials_json):
         return GoogleSheetsPropertyStore(sheet_id, worksheet_name, credentials_file, credentials_json)
+
+    default_csv_path = BASE_DIR / "data" / "LeasingSnapshot - ChatBotClient.csv"
+    if default_csv_path.exists():
+        return CsvPropertyStore(str(default_csv_path))
 
     raise RuntimeError(
         "Set GOOGLE_SHEET_ID + GOOGLE_APPLICATION_CREDENTIALS for Google Sheets, "

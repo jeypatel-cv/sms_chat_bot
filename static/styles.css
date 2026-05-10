@@ -61,6 +61,13 @@ h1 {
   font-size: 1.02rem;
 }
 
+.version-line {
+  margin: 10px 0 0;
+  color: rgba(229, 238, 251, 0.8);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
 .status-card,
 .panel-card,
 .chat-panel {
@@ -200,6 +207,21 @@ button {
 .side-panel {
   display: grid;
   gap: 16px;
+}
+
+.page-footer {
+  margin: 0 0 18px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.page-footer a {
+  color: var(--accent-2);
+  text-decoration: none;
+}
+
+.page-footer a:hover {
+  text-decoration: underline;
 }
 
 .panel-card {

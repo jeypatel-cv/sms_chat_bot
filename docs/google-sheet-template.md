@@ -1,24 +1,17 @@
-# Google Sheet Template - VP Realty Properties
+# Leasing Snapshot Template - VP Realty Properties
 
-Use one worksheet tab named `Properties` with these column headers in row 1:
+Use one worksheet tab named `Properties` with these column headers in row 1. This mirrors `data/LeasingSnapshot - ChatBotClient.csv`.
 
-| property_id | property_name | street_address | city | state | zip | rent | bedrooms | bathrooms | availability_status | available_from | listing_id | manager_name | manager_phone | contact_owner | manager_email | view_details_url | sqft |
-|---|---|---|---|---|---|---|---:|---:|---|---|---|---|---|---|---|---|---:|
-
-## Example rows
-
-| property_id | property_name | street_address | city | state | zip | rent | bedrooms | bathrooms | availability_status | available_from | listing_id | manager_name | manager_phone | contact_owner | manager_email | view_details_url | sqft |
-|---|---|---|---|---|---|---|---:|---:|---|---|---|---|---|---|---|---|---:|
-| VP-LIVE-001 | 1913 Ridge Creek Ln | 1913 Ridge Creek Ln | Aubrey | TX | 76227 | 2295 | 3 | 2 | available | NOW | dcccd8f9-a8ad-4948-b288-9289826cda5f | Anjali Sangtani | 972-591-8075 | leasing@vprealtyservices.com | leasing@vprealtyservices.com | https://www.vprealtyservices.com/listings/detail/dcccd8f9-a8ad-4948-b288-9289826cda5f | 1924 |
-| VP-LIVE-002 | 312 Santa Lucia | 312 Santa Lucia | Anna | TX | 75409 | 3650 | 5 | 4.5 | available | 06/05/2026 | 3848ec4a-898b-42c7-9263-d1c73fb01454 | Anjali Sangtani | 972-591-8075 | leasing@vprealtyservices.com | leasing@vprealtyservices.com | https://www.vprealtyservices.com/listings/detail/3848ec4a-898b-42c7-9263-d1c73fb01454 | 3719 |
+```text
+advertised_rent,posted_to_website,posted_to_internet,property,property_name,amenities,lockbox_enabled,affordable_program,address,street,street2,city,state,zip,unit,unit_tags,unit_type,bed_and_bath,sqft,unit_status,rent_ready,days_vacant,last_rent,schd_rent,new_rent,last_move_in,last_move_out,available_on,next_move_in,description,amenities_price,computed_market_rent,ready_for_showing_on,unit_turn_target_date,property_id,unit_id,contact_info
+```
 
 ## Notes
 
-- Keep `property_id` unique.
-- Keep `listing_id` unique if you use it.
-- Keep `manager_phone` in a simple phone format.
-- If you want the bot to include fallback contact info, also keep `contact_owner` and/or `manager_email`.
-- Keep one property per row.
+- `bed_and_bath` is the combined bedroom/bathroom field used by the app.
+- `contact_info` combines the contact name, email, and phone in one cell.
+- `address`, `street`, and `street2` can be used together to reconstruct a display address.
+- Keep one property/unit per row.
 - Avoid merged cells or extra title rows.
 
 ## Message Log Tab

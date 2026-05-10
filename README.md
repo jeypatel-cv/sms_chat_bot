@@ -4,6 +4,7 @@ This project contains the VP Realty SMS pilot, with the same backend engine used
 
 Start here:
 - [docs/INDEX.md](docs/INDEX.md)
+- [docs/schema-migration-note.md](docs/schema-migration-note.md)
 - [docs/render-checklist.md](docs/render-checklist.md)
 - `server.py` for local testing
 - `production_app.py` for production
@@ -11,7 +12,7 @@ Start here:
 ## What it does
 
 - serves a local test harness for the SMS engine
-- uses the live export CSV for local and server-side testing
+- uses the LeasingSnapshot CSV for local and server-side testing
 - answers basic leasing questions
 - keeps simple conversation context
 - simulates human handoff
@@ -36,7 +37,7 @@ Production uses the same `production_app.py` engine with cloud environment varia
 ## Test data
 
 The local demo uses:
-- `data/vp_properties_live_export.csv`
+- `data/LeasingSnapshot - ChatBotClient.csv`
 
 This keeps local and server-side tests aligned on the same property set.
 
@@ -48,11 +49,17 @@ This keeps local and server-side tests aligned on the same property set.
 - When is 106 Sunberry Drive available from?
 - Can I speak to a human?
 
+## Versioning
+
+- The demo page shows the current app version.
+- Release notes live in [docs/release-notes.md](docs/release-notes.md).
+- Keep each release note short and simple, then bump the version when shipping meaningful changes.
+
 ## Files
 
 - `server.py` - local HTTP server and conversation engine
 - `data/properties.json` - dummy property dataset
-- `data/vp_properties_live_export.csv` - current live property export used by local and demo testing
+- `data/LeasingSnapshot - ChatBotClient.csv` - current LeasingSnapshot export used by local and demo testing
 - `static/index.html` - UI shell
 - `static/styles.css` - visual styling
 - `static/app.js` - frontend behavior

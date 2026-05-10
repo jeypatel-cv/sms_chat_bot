@@ -14,12 +14,19 @@ const releaseNotesLink = document.getElementById("releaseNotesLink");
 
 const smokeComplaintPrompt = "I called a number of times now, but have gotten no response :-(";
 const smokeBudgetPrompt = "Show me anything under 2300";
+const smokeAvailabilityPrompt = "Is it available?";
+const smokeRentPrompt = "How much is rent?";
+const smokeBedBathPromptBase = "How many bedrooms and bathrooms does this property have?";
+const smokeAvailableFromPromptBase = "When is it available from?";
+const smokeContactPromptBase = "Who should I contact for details?";
 
 const prompts = [
   "1913 Ridge Creek Ln",
-  "How much is rent?",
+  smokeRentPrompt,
+  smokeBedBathPromptBase,
   smokeComplaintPrompt,
   smokeBudgetPrompt,
+  smokeAvailabilityPrompt,
   "Can I speak to a human?",
 ];
 
@@ -63,7 +70,7 @@ function filteredProperties() {
     return properties;
   }
   return properties.filter((p) => {
-    const haystack = [p.name, p.address, p.property_id, p.listing_id, p.city, p.state]
+    const haystack = [p.name, p.address, p.property_id, p.city, p.state]
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
@@ -132,6 +139,11 @@ function renderSmokeResult(label, ok, detail) {
   smokeResults.appendChild(row);
 }
 
+function includesAny(text, terms) {
+  const lower = (text || "").toLowerCase();
+  return terms.some((term) => lower.includes(term.toLowerCase()));
+}
+
 function pickSmokeProperty(items) {
   const liveProperty = items.find((p) => typeof p.property_id === "string" && p.property_id.trim().length > 0 && p.address);
   return liveProperty || items[0] || null;
@@ -178,22 +190,67 @@ async function runSmokeTest(auto = false) {
     }
 
     const exact = await postMessage(smokePhone, sample.address);
-    const exactOk = exact.intent === "property_qna" && typeof exact.reply === "string" && exact.reply.length > 0;
+    const exactOk =
+      exact.intent === "property_qna" &&
+      typeof exact.reply === "string" &&
+      exact.reply.length > 0 &&
+      includesAny(exact.reply, [sample.name, sample.address, sample.property_id]);
     renderSmokeResult(
       `Exact address lookup for ${sample.address}`,
       exactOk,
       `intent=${exact.intent || "-"} | reply=${exact.reply || "-"}`
     );
 
-    if (sample.city) {
-      const city = await postMessage(smokePhone, sample.city);
-      const cityOk = city.intent === "area_list" || city.intent === "budget_list";
-      renderSmokeResult(
-        `City lookup for ${sample.city}`,
-        cityOk,
-        `intent=${city.intent || "-"} | reply=${city.reply || "-"}`
-      );
-    }
+    const rent = await postMessage(smokePhone, smokeRentPrompt);
+    const rentOk = rent.intent === "property_qna" && includesAny(rent.reply, ["rent", "$"]);
+    renderSmokeResult(
+      "Rent lookup",
+      rentOk,
+      `intent=${rent.intent || "-"} | reply=${rent.reply || "-"}`
+    );
+
+    const availability = await postMessage(smokePhone, smokeAvailabilityPrompt);
+    const availabilityOk =
+      availability.intent === "property_qna" &&
+      includesAny(availability.reply, ["available", "currently", sample.availability || ""]);
+    renderSmokeResult(
+      "Availability lookup",
+      availabilityOk,
+      `intent=${availability.intent || "-"} | reply=${availability.reply || "-"}`
+    );
+
+    const bedBathPrompt = `${smokeBedBathPromptBase} ${sample.address}`;
+    const bedBath = await postMessage(smokePhone, bedBathPrompt);
+    const bedBathOk =
+      bedBath.intent === "property_qna" &&
+      includesAny(bedBath.reply, ["bedrooms", "bathrooms", "bed", "bath"]);
+    renderSmokeResult(
+      "Bedroom/bathroom lookup",
+      bedBathOk,
+      `intent=${bedBath.intent || "-"} | reply=${bedBath.reply || "-"}`
+    );
+
+    const availableFromPrompt = `${smokeAvailableFromPromptBase} ${sample.address}`;
+    const availableFrom = await postMessage(smokePhone, availableFromPrompt);
+    const availableFromOk =
+      availableFrom.intent === "property_qna" &&
+      includesAny(availableFrom.reply, ["available from", "available"]);
+    renderSmokeResult(
+      "Available-from lookup",
+      availableFromOk,
+      `intent=${availableFrom.intent || "-"} | reply=${availableFrom.reply || "-"}`
+    );
+
+    const contactPrompt = `${smokeContactPromptBase} ${sample.address}`;
+    const contactInfo = await postMessage(smokePhone, contactPrompt);
+    const contactInfoOk =
+      contactInfo.intent === "property_qna" &&
+      includesAny(contactInfo.reply, ["call", "email"]);
+    renderSmokeResult(
+      "Contact-info fallback",
+      contactInfoOk,
+      `intent=${contactInfo.intent || "-"} | reply=${contactInfo.reply || "-"}`
+    );
 
     const handoff = await postMessage(smokePhone, smokeComplaintPrompt);
     const handoffOk = handoff.intent === "human_handoff";
@@ -255,7 +312,7 @@ async function resetConversation() {
   const phone = phoneInput.value.trim();
   await fetch(`/api/reset?phone=${encodeURIComponent(phone)}`, { method: "POST" });
   chatLog.innerHTML = "";
-  addBubble("assistant", "Hi, I am the VP Realty SMS assistant demo. Send a property address or listing ID to get started.", "system");
+  addBubble("assistant", "Hi, I am the VP Realty SMS assistant demo. Send a property address to get started.", "system");
 }
 
 sendBtn.addEventListener("click", sendMessage);

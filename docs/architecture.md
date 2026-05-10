@@ -84,22 +84,44 @@ Twilio inbound SMS -> backend session store -> reply generation -> Twilio outbou
 
 ## 7. Google Sheets Structure
 
-Recommended columns:
-- property_id
+Recommended LeasingSnapshot columns:
+- advertised_rent
+- posted_to_website
+- posted_to_internet
+- property
 - property_name
-- street_address
+- amenities
+- lockbox_enabled
+- affordable_program
+- address
+- street
+- street2
 - city
 - state
 - zip
-- rent
-- bedrooms
-- bathrooms
-- availability_status
-- available_from
+- unit
+- unit_tags
+- unit_type
+- bed_and_bath
+- sqft
+- unit_status
+- rent_ready
+- days_vacant
+- last_rent
+- schd_rent
+- new_rent
+- last_move_in
+- last_move_out
+- available_on
+- next_move_in
 - description
-- listing_id
-- contact_owner
-- notes
+- amenities_price
+- computed_market_rent
+- ready_for_showing_on
+- unit_turn_target_date
+- property_id
+- unit_id
+- contact_info
 
 Optional columns:
 - pet_policy
@@ -130,7 +152,7 @@ Do not:
 The backend should handle following cases:
 
 ### Exact match
-Customer gives a full address, listing ID, or property name.
+Customer gives a full address, unit number, property ID, or property name.
 
 ### Partial match
 Customer gives a similar street address or partial street name.
@@ -236,7 +258,7 @@ JSON is still useful for local testing, but it is not ideal as the live source o
 ## 18. Local Test Data
 
 For local testing and server-side smoke testing, the shared CSV export is:
-- `data/vp_properties_live_export.csv`
+- `data/LeasingSnapshot - ChatBotClient.csv`
 
 This keeps local testing aligned with the server-side demo data.
 

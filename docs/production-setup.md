@@ -14,7 +14,7 @@ For a step-by-step launch plan, see [pilot-deployment-runbook.md](pilot-deployme
 ## What you need to do
 
 ### 1. Create the Google Sheet
-Use the columns described in [google-sheet-template.md](google-sheet-template.md).
+Use the LeasingSnapshot columns described in [google-sheet-template.md](google-sheet-template.md).
 The current pilot sheet ID is already wired as the default in the app:
 - `1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 

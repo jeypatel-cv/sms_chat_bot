@@ -39,7 +39,7 @@ Recommended host shape:
 ## Deployment Flow
 
 ### 1. Prepare Google Sheets
-Create a worksheet tab named `Properties` and use the columns in `google-sheet-template.md`.
+Create a worksheet tab named `Properties` and use the LeasingSnapshot columns in `google-sheet-template.md`.
 The app is now defaulted to this sheet ID:
 - `1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
 
@@ -115,7 +115,7 @@ Use these in order:
 - partial match: suggest the property and ask what detail they want
 - follow-up: stay on the last property
 - human request: route to handoff message
-- unknown property: ask for address or listing ID
+- unknown property: ask for address, unit number, or property name
 
 ## Pilot Launch Checklist
 
