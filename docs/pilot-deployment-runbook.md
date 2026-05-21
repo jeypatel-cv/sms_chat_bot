@@ -39,7 +39,7 @@ Recommended host shape:
 ## Deployment Flow
 
 ### 1. Prepare Google Sheets
-Create a worksheet tab named `Properties` and use the LeasingSnapshot columns in `google-sheet-template.md`.
+Create a worksheet tab named `ChatBotClient` and use the LeasingSnapshot columns in `google-sheet-template.md`.
 The app is now defaulted to this sheet ID:
 - `18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
 

@@ -15,7 +15,7 @@ services:
       - key: GOOGLE_SHEET_ID
         value: 18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k
       - key: GOOGLE_SHEET_TAB
-        value: Properties
+        value: ChatBotClient
       - key: MESSAGE_LOG_TO_CONSOLE
         value: "true"
       - key: MESSAGE_LOG_TO_APPS_SCRIPT

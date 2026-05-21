@@ -1,6 +1,6 @@
 # Leasing Snapshot Template - VP Realty Properties
 
-Use one worksheet tab named `Properties` with these column headers in row 1. This mirrors `data/LeasingSnapshot - ChatBotClient.csv`.
+Use one worksheet tab named `ChatBotClient` with these column headers in row 1. This mirrors `data/LeasingSnapshot - ChatBotClient.csv`.
 
 ```text
 advertised_rent,posted_to_website,posted_to_internet,property,property_name,amenities,lockbox_enabled,affordable_program,address,street,street2,city,state,zip,unit,unit_tags,unit_type,bed_and_bath,sqft,unit_status,rent_ready,days_vacant,last_rent,schd_rent,new_rent,last_move_in,last_move_out,available_on,next_move_in,description,amenities_price,computed_market_rent,ready_for_showing_on,unit_turn_target_date,property_id,unit_id,contact_info
