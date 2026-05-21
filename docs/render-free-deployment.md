@@ -35,7 +35,7 @@ If you create the service manually, use:
 Set these in the Render dashboard:
 
 - `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
-- `GOOGLE_SHEET_TAB=Properties`
+- `GOOGLE_SHEET_TAB=ChatBotClient`
 - `PYTHON_VERSION=3.13.5`
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`
@@ -50,7 +50,7 @@ Set these in the Render dashboard:
 
 ## Google Sheets Access
 
-The backend reads property data from Google Sheets using the LeasingSnapshot column set.
+The backend reads property data from Google Sheets using the LeasingSnapshot column set. If Google Sheets is unavailable, it can fall back to `PROPERTIES_CSV_PATH` when configured.
 For message logging, it posts to the Apps Script web app.
 
 ## Twilio Webhook

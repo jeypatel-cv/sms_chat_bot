@@ -53,13 +53,12 @@ Before you do that:
 - rotate the Twilio auth token because it was shared in chat
 - store the new token only in Render environment variables
 
-Remove:
-- `PROPERTIES_CSV_PATH`
-- or use `PROPERTIES_SOURCE_URL` instead if the source is a raw CSV or JSON feed
+Keep `PROPERTIES_CSV_PATH` if you want a CSV fallback.
+If you use a raw remote export, you can still set `PROPERTIES_SOURCE_URL`.
 
 Add:
 - `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
-- `GOOGLE_SHEET_TAB=Properties`
+- `GOOGLE_SHEET_TAB=ChatBotClient`
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`
 - `MESSAGE_LOG_APPS_SCRIPT_URL=https://script.google.com/macros/s/.../exec`
@@ -94,8 +93,7 @@ For real SMS testing, keep these in Render:
 If you are still using CSV for now, keep:
 - `PROPERTIES_CSV_PATH=data/LeasingSnapshot - ChatBotClient.csv`
 
-If you want Google Sheets later, remove:
-- `PROPERTIES_CSV_PATH`
+If you want Google Sheets first with CSV fallback, keep both `GOOGLE_SHEET_ID` and `PROPERTIES_CSV_PATH`.
 
 ### Twilio
 In the Twilio Console, on the phone number page:
@@ -140,7 +138,7 @@ If you are switching to Google Sheets now, remove:
 
 And add:
 - `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
-- `GOOGLE_SHEET_TAB=Properties`
+- `GOOGLE_SHEET_TAB=ChatBotClient`
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`
 - `MESSAGE_LOG_APPS_SCRIPT_URL=https://script.google.com/macros/s/.../exec`

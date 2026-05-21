@@ -63,8 +63,7 @@ Send a text and confirm the webhook returns a TwiML response.
 
 If credentials are configured, the backend will send the outgoing SMS through Twilio. If not, the app can still run in mock mode for local testing.
 
-For web-based production testing, open:
-- `https://vp-realty-sms-pilot.onrender.com/demo`
+If you keep `PROPERTIES_CSV_PATH` set, the app will try Google Sheets first and fall back to the CSV if Sheets cannot be read.
 
 ## Local fallback for testing
 

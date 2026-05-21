@@ -566,6 +566,18 @@ class CsvPropertyStore(PropertyStore):
             return [PropertyRecord.from_row(row) for row in reader]
 
 
+class FallbackPropertyStore(PropertyStore):
+    def __init__(self, primary: PropertyStore, fallback: PropertyStore):
+        self.primary = primary
+        self.fallback = fallback
+
+    def load(self) -> list[PropertyRecord]:
+        try:
+            return self.primary.load()
+        except Exception:
+            return self.fallback.load()
+
+
 class RemotePropertyStore(PropertyStore):
     def __init__(self, source_url: str, source_format: str = ""):
         self.source_url = source_url
@@ -1437,22 +1449,25 @@ class ProductionRequestHandler(BaseHTTPRequestHandler):
 
 
 def build_store_from_env() -> PropertyStore:
+    sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip() or DEFAULT_GOOGLE_SHEET_ID
+    worksheet_name = os.getenv("GOOGLE_SHEET_TAB", "ChatBotClient").strip()
+    credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
+    credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
     csv_path = os.getenv("PROPERTIES_CSV_PATH", "").strip()
-    if csv_path:
-        return CsvPropertyStore(csv_path)
-
     source_url = os.getenv("PROPERTIES_SOURCE_URL", "").strip()
     source_format = os.getenv("PROPERTIES_SOURCE_FORMAT", "").strip()
+
+    if sheet_id and (credentials_file or credentials_json):
+        primary = GoogleSheetsPropertyStore(sheet_id, worksheet_name, credentials_file, credentials_json)
+        if csv_path:
+            return FallbackPropertyStore(primary, CsvPropertyStore(csv_path))
+        return primary
+
     if source_url:
         return RemotePropertyStore(source_url, source_format)
 
-    sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip() or DEFAULT_GOOGLE_SHEET_ID
-    worksheet_name = os.getenv("GOOGLE_SHEET_TAB", "Properties").strip()
-    credentials_file = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "").strip()
-    credentials_json = os.getenv("GOOGLE_APPLICATION_CREDENTIALS_JSON", "").strip()
-
-    if sheet_id and (credentials_file or credentials_json):
-        return GoogleSheetsPropertyStore(sheet_id, worksheet_name, credentials_file, credentials_json)
+    if csv_path:
+        return CsvPropertyStore(csv_path)
 
     default_csv_path = BASE_DIR / "data" / "LeasingSnapshot - ChatBotClient.csv"
     if default_csv_path.exists():
