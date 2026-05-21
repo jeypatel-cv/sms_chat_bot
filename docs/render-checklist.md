@@ -34,6 +34,9 @@ After deploy, verify:
 - `GET /demo`
 - `POST /demo/message`
 
+Live web test URL:
+- `https://vp-realty-sms-pilot.onrender.com/demo`
+
 Suggested smoke-test messages:
 - `1913 Ridge Creek Ln`
 - `How much is rent?`
@@ -55,7 +58,7 @@ Remove:
 - or use `PROPERTIES_SOURCE_URL` instead if the source is a raw CSV or JSON feed
 
 Add:
-- `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
+- `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
 - `GOOGLE_SHEET_TAB=Properties`
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`
@@ -136,7 +139,7 @@ If you are switching to Google Sheets now, remove:
 - `PROPERTIES_CSV_PATH`
 
 And add:
-- `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
+- `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
 - `GOOGLE_SHEET_TAB=Properties`
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`

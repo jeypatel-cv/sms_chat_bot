@@ -34,7 +34,7 @@ If you create the service manually, use:
 
 Set these in the Render dashboard:
 
-- `GOOGLE_SHEET_ID=1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
+- `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
 - `GOOGLE_SHEET_TAB=Properties`
 - `PYTHON_VERSION=3.13.5`
 - `MESSAGE_LOG_TO_CONSOLE=true`

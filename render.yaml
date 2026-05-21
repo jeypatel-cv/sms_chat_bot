@@ -12,6 +12,8 @@ services:
         value: 3.13.5
       - key: HOST
         value: 0.0.0.0
+      - key: GOOGLE_SHEET_ID
+        value: 18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k
       - key: GOOGLE_SHEET_TAB
         value: Properties
       - key: MESSAGE_LOG_TO_CONSOLE

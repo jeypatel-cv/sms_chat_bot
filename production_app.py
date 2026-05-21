@@ -39,7 +39,7 @@ except Exception:  # pragma: no cover - keeps the module importable without deps
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 DEFAULT_CACHE_TTL_SECONDS = 300
-DEFAULT_GOOGLE_SHEET_ID = "1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44"
+DEFAULT_GOOGLE_SHEET_ID = "18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k"
 DEFAULT_HANDOFF_TTL_SECONDS = 900
 APP_VERSION = "1.1"
 

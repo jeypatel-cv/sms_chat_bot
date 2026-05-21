@@ -16,7 +16,7 @@ For a step-by-step launch plan, see [pilot-deployment-runbook.md](pilot-deployme
 ### 1. Create the Google Sheet
 Use the LeasingSnapshot columns described in [google-sheet-template.md](google-sheet-template.md).
 The current pilot sheet ID is already wired as the default in the app:
-- `1wcw6nsvP4trX28O1l6TdMklLciUXuRvXSYPTnScb_44`
+- `18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
 
 ### 2. Create the message log endpoint
 Create a Google Apps Script web app bound to the Sheet.
@@ -62,6 +62,9 @@ pip install -r requirements.txt
 Send a text and confirm the webhook returns a TwiML response.
 
 If credentials are configured, the backend will send the outgoing SMS through Twilio. If not, the app can still run in mock mode for local testing.
+
+For web-based production testing, open:
+- `https://vp-realty-sms-pilot.onrender.com/demo`
 
 ## Local fallback for testing
 
