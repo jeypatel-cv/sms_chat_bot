@@ -19,6 +19,12 @@ const smokeRentPrompt = "How much is rent?";
 const smokeBedBathPromptBase = "How many bedrooms and bathrooms does this property have?";
 const smokeAvailableFromPromptBase = "When is it available from?";
 const smokeContactPromptBase = "Who should I contact for details?";
+const smokeCodePromptBase = "What is the entry code for this property?";
+const smokeAreaCases = [
+  { label: "Area lookup typo", prompt: "Princton", expectedCity: "Princeton" },
+  { label: "Area lookup typo", prompt: "McKinny", expectedCity: "McKinney" },
+  { label: "Area alias", prompt: "North Princeton", expectedCity: "Princeton" },
+];
 
 const prompts = [
   "1913 Ridge Creek Ln",
@@ -27,6 +33,10 @@ const prompts = [
   smokeComplaintPrompt,
   smokeBudgetPrompt,
   smokeAvailabilityPrompt,
+  "Princton",
+  "McKinny",
+  "North Princeton",
+  smokeCodePromptBase,
   "Can I speak to a human?",
 ];
 
@@ -149,6 +159,12 @@ function pickSmokeProperty(items) {
   return liveProperty || items[0] || null;
 }
 
+function hasCity(items, city) {
+  const target = (city || "").trim().toLowerCase();
+  if (!target) return false;
+  return items.some((p) => (p.city || "").trim().toLowerCase() === target);
+}
+
 async function postMessage(phone, text) {
   const res = await fetch("/api/message", {
     method: "POST",
@@ -251,6 +267,30 @@ async function runSmokeTest(auto = false) {
       contactInfoOk,
       `intent=${contactInfo.intent || "-"} | reply=${contactInfo.reply || "-"}`
     );
+
+    const codePrompt = `${smokeCodePromptBase} ${sample.address}`;
+    const codeInfo = await postMessage(smokePhone, codePrompt);
+    const codeInfoOk =
+      codeInfo.intent === "property_qna" &&
+      includesAny(codeInfo.reply, ["contact the manager", "for more details", "call", "email"]);
+    renderSmokeResult(
+      "Entry-code manager handoff",
+      codeInfoOk,
+      `intent=${codeInfo.intent || "-"} | reply=${codeInfo.reply || "-"}`
+    );
+
+    for (const areaCase of smokeAreaCases.filter((item) => hasCity(smokeProps, item.expectedCity))) {
+      const area = await postMessage(smokePhone, areaCase.prompt);
+      const areaOk =
+        area.intent === "area_list" &&
+        includesAny(area.reply, [areaCase.expectedCity, "options"]) &&
+        !includesAny(area.reply, ["Which area are you looking to rent"]);
+      renderSmokeResult(
+        `${areaCase.label} for ${areaCase.prompt}`,
+        areaOk,
+        `intent=${area.intent || "-"} | reply=${area.reply || "-"}`
+      );
+    }
 
     const handoff = await postMessage(smokePhone, smokeComplaintPrompt);
     const handoffOk = handoff.intent === "human_handoff";

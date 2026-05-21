@@ -93,7 +93,7 @@ Expected response:
 Before going live:
 - run the app with CSV fallback
 - send messages through the `/demo/message` endpoint
-- verify exact match, partial street match, and follow-up behavior
+- verify exact match, partial street match, area typo/alias matching, and follow-up behavior
 
 ### Twilio webhook test
 Once deployed:
@@ -106,13 +106,16 @@ Once deployed:
 Use these in order:
 1. exact address match
 2. partial street match
-3. follow-up question with no address repeated
-4. human handoff request
-5. unknown property
+3. area typo match like `Princton`
+4. area alias like `North Princeton`
+5. follow-up question with no address repeated
+6. human handoff request
+7. unknown property
 
 ### Expected behavior
 - exact match: give the property answer
 - partial match: suggest the property and ask what detail they want
+- area typo/alias: return the area list for the intended city
 - follow-up: stay on the last property
 - human request: route to handoff message
 - unknown property: ask for address, unit number, or property name

@@ -6,6 +6,7 @@ import json
 import mimetypes
 import os
 import re
+from difflib import SequenceMatcher
 from io import StringIO
 from dataclasses import dataclass
 from dataclasses import asdict
@@ -684,25 +685,65 @@ class ConversationBrain:
 
         return None
 
-    def detect_city(self, text: str, properties: list[PropertyRecord]) -> str | None:
+    def _city_match_score(self, city: str, text: str) -> float:
+        city_norm = normalize(city)
+        city_compact = compact(city)
+        if not city_norm or not city_compact:
+            return 0.0
+
         normalized = normalize(text)
         compact_text = compact(text)
+        text_tokens = tokens(text)
+        city_tokens = tokens(city)
+
+        if city_norm in normalized or city_compact in compact_text:
+            return 1.0
+        if city_tokens and city_tokens <= text_tokens:
+            return 0.97
+        if not text_tokens:
+            return 0.0
+
+        phrase_score = SequenceMatcher(None, city_compact, compact_text).ratio()
+        token_scores = []
+        for city_token in city_tokens or {city_compact}:
+            best_ratio = 0.0
+            for text_token in text_tokens:
+                best_ratio = max(best_ratio, SequenceMatcher(None, city_token, text_token).ratio())
+            token_scores.append(best_ratio)
+
+        token_score = sum(token_scores) / len(token_scores) if token_scores else 0.0
+        return max(phrase_score, token_score)
+
+    def detect_city(self, text: str, properties: list[PropertyRecord]) -> str | None:
         cities = []
         for prop in properties:
             city = prop.city.strip()
             if city and city not in cities:
                 cities.append(city)
         cities.sort(key=lambda value: len(compact(value)), reverse=True)
+
+        best_city = None
+        best_score = 0.0
         for city in cities:
             city_norm = normalize(city)
             city_compact = compact(city)
             city_tokens = tokens(city)
+            normalized = normalize(text)
+            compact_text = compact(text)
             if city_norm and city_norm in normalized:
                 return city
             if city_compact and city_compact in compact_text:
                 return city
             if city_tokens and city_tokens <= tokens(text):
                 return city
+
+            score = self._city_match_score(city, text)
+            if score > best_score:
+                best_city = city
+                best_score = score
+
+        if best_city is not None and best_score >= 0.78:
+            return best_city
         return None
 
     def list_properties_reply(self, properties: list[PropertyRecord], label: str, max_results: int | None = None) -> str:
@@ -856,6 +897,13 @@ class ConversationBrain:
         properties = properties or self.load_properties()
         normalized = normalize(text)
         compact_text = compact(text)
+        city_hint = self.detect_city(text, properties)
+        tokens_count = len(tokens(text))
+        area_only_query = bool(city_hint) and tokens_count <= 3 and not any(ch.isdigit() for ch in text)
+
+        if area_only_query:
+            session["last_match_type"] = None
+            return None, None
 
         def score_street_match(prop: PropertyRecord) -> tuple[int, str | None]:
             street = street_line(prop.address)
@@ -934,6 +982,10 @@ class ConversationBrain:
         rooms = f"{bedrooms} bedrooms, {bathrooms} bathrooms"
         available_from = format_date(prop.available_from)
         availability = prop.availability or "unknown"
+        if any(word in normalized for word in ["code", "entry code", "access code", "gate code", "lock code", "door code"]):
+            return f"For the entry code for {prop.name}, please contact the manager for this property."
+        if any(word in normalized for word in ["contact", "manager", "phone", "email", "number"]):
+            return self.footer_for_property(prop)
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
             return f"{prop.name} is available from {available_from}."
         if any(word in normalized for word in ["rent", "price", "cost", "how much"]):
@@ -949,23 +1001,34 @@ class ConversationBrain:
             )
 
         return (
-            f"I don't have that detail in the current property data for {prop.name}. "
-            "I can connect you with the leasing team."
+            f"For more details about {prop.name}, please contact the leasing team."
+        )
+
+    def property_summary(self, prop: PropertyRecord) -> str:
+        rent = f"${int(prop.rent_per_month):,}" if prop.rent_per_month is not None else "not provided"
+        bedrooms = prop.bedrooms if prop.bedrooms is not None else "not provided"
+        bathrooms = prop.bathrooms if prop.bathrooms is not None else "not provided"
+        availability = prop.availability or "unknown"
+        available_from = format_date(prop.available_from)
+        return (
+            f"{prop.name} at {prop.address} is {availability}. "
+            f"It has {bedrooms} bedrooms, {bathrooms} bathrooms, rent {rent} per month, "
+            f"and is available from {available_from}."
         )
 
     def footer_for_property(self, prop: PropertyRecord | None) -> str:
         if prop is None:
-            return "Call the leasing team at 972-591-8075."
+            return "For more details, call the leasing team at 972-591-8075."
 
         manager_email = prop.manager_email.strip()
         manager_phone = prop.manager_phone.strip()
         if manager_phone and manager_email:
-            return f"Call {manager_phone} or email {manager_email} for details."
+            return f"For more details, call {manager_phone} or email {manager_email}."
         if manager_phone:
-            return f"Call {manager_phone} for details."
+            return f"For more details, call {manager_phone}."
         if manager_email:
-            return f"Email {manager_email} for details."
-        return "Call the leasing team at 972-591-8075."
+            return f"For more details, email {manager_email}."
+        return "For more details, call the leasing team at 972-591-8075."
 
     def add_footer(self, reply: str, prop: PropertyRecord | None) -> str:
         footer = self.footer_for_property(prop)
@@ -982,10 +1045,39 @@ class ConversationBrain:
         prop, match_type = self.find_property(text, session, properties)
         normalized = normalize(text)
         detail_terms = ("bedroom", "bathroom", "bedrooms", "bathrooms", "bed", "bath", "how many")
+        code_terms = ("code", "entry code", "access code", "gate code", "lock code", "door code")
+        property_info_terms = (
+            "available from",
+            "move in",
+            "move-in",
+            "when available",
+            "rent",
+            "price",
+            "cost",
+            "how much",
+            "available",
+            "availability",
+            "still active",
+            "vacant",
+            "more details",
+            "details",
+            "info",
+            "information",
+            "phone",
+            "email",
+            "contact",
+            "number",
+            "code",
+            "entry code",
+            "access code",
+            "gate code",
+            "lock code",
+            "door code",
+        )
         reply = ""
         intent = "unknown"
 
-        if prop is None and session.get("property_id") and any(term in normalized for term in detail_terms):
+        if prop is None and session.get("property_id") and any(term in normalized for term in detail_terms + code_terms):
             prop = self._session_property(session, properties)
             if prop is not None:
                 match_type = "session"
@@ -1064,7 +1156,7 @@ class ConversationBrain:
                     )
                     intent = "clarify_property"
             if intent == "clarify_property" and session.get("property_id") and any(
-                term in normalized for term in detail_terms
+                term in normalized for term in detail_terms + code_terms
             ):
                 session_prop = self._session_property(session, properties)
                 if session_prop is not None:
@@ -1073,17 +1165,31 @@ class ConversationBrain:
                     intent = "property_qna"
                     reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
         elif match_type == "partial":
-            reply = self.add_footer(
-                (
-                    f"I found {prop.name} at {prop.address}. "
-                    "Do you want rent, availability, or bedroom details for this property?"
-                ),
-                prop,
-            )
-            intent = "property_suggestion"
+            if any(term in normalized for term in property_info_terms):
+                reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
+                intent = "property_qna"
+            elif self.looks_like_explicit_property_reference(text):
+                reply = self.add_footer(self.property_summary(prop), prop)
+                intent = "property_qna"
+            else:
+                reply = self.add_footer(
+                    (
+                        f"I found {prop.name} at {prop.address}. "
+                        "Do you want rent, availability, or bedroom details for this property?"
+                    ),
+                    prop,
+                )
+                intent = "property_suggestion"
         else:
-            intent = "property_qna"
-            reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
+            if any(term in normalized for term in property_info_terms):
+                reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
+                intent = "property_qna"
+            elif self.looks_like_explicit_property_reference(text):
+                reply = self.add_footer(self.property_summary(prop), prop)
+                intent = "property_qna"
+            else:
+                intent = "property_qna"
+                reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
 
         message = {
             "timestamp": datetime.now().isoformat(timespec="seconds"),
