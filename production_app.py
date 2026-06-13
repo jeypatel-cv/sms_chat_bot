@@ -1076,8 +1076,8 @@ class ConversationBrain:
         session = self.get_session(phone)
         self._handoff_is_active(session)
         properties = self.load_properties()
-        prop, match_type = self.find_property(text, session, properties)
         normalized = normalize(text)
+        budget_limit = self.extract_budget_limit(text)
         detail_terms = ("bedroom", "bathroom", "bedrooms", "bathrooms", "bed", "bath", "how many")
         code_terms = ("code", "entry code", "access code", "gate code", "lock code", "door code")
         property_info_terms = (
@@ -1110,6 +1110,54 @@ class ConversationBrain:
         )
         reply = ""
         intent = "unknown"
+
+        if (
+            budget_limit is not None
+            and not self._looks_like_address_query(text)
+            and not self.looks_like_explicit_property_reference(text)
+        ):
+            city, city_matches = self.find_city_matches(text, properties)
+            budget, budget_matches = self.find_budget_matches(text, properties)
+            if city and budget is not None:
+                city_budget_matches = [
+                    prop
+                    for prop in city_matches
+                    if prop.rent_per_month is not None and prop.rent_per_month <= budget
+                ]
+                if city_budget_matches:
+                    city_budget_matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
+                    reply = self.add_footer(
+                        self.list_properties_reply(city_budget_matches, f"{city} under ${int(budget):,}"),
+                        None,
+                    )
+                else:
+                    reply = self.add_footer(f"I could not find any properties in {city} under ${int(budget):,}.", None)
+                intent = "budget_list"
+            elif budget_matches:
+                reply = self.add_footer(
+                    self.list_properties_reply(budget_matches, f"${int(budget):,} budget"),
+                    None,
+                )
+                intent = "budget_list"
+            else:
+                reply = self.add_footer(
+                    f"I could not find any properties under ${int(budget_limit):,}. Please send the property address or area if you want me to narrow it down.",
+                    None,
+                )
+                intent = "budget_list"
+
+            message = {
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "phone": phone,
+                "incoming": text,
+                "reply": reply,
+                "intent": intent,
+                "property_id": session.get("property_id"),
+            }
+            self.history.setdefault(phone, []).append(message)
+            return message
+
+        prop, match_type = self.find_property(text, session, properties)
 
         if (
             prop is None
