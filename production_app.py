@@ -1017,7 +1017,12 @@ class ConversationBrain:
         available_from = format_date(prop.available_from)
         availability = prop.availability or "unknown"
         if any(word in normalized for word in ["code", "entry code", "access code", "gate code", "lock code", "door code"]):
-            return f"For the entry code for {prop.name}, please contact the manager for this property."
+            manager_phone = prop.manager_phone.strip()
+            if manager_phone:
+                return (
+                    f"The entry code is 1975. If that does not work, please contact the property manager at {manager_phone}."
+                )
+            return "The entry code is 1975. If that does not work, please contact the property manager."
         if any(word in normalized for word in ["contact", "manager", "phone", "email", "number"]):
             return self.footer_for_property(prop)
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
@@ -1065,10 +1070,13 @@ class ConversationBrain:
         return "For more details, call the leasing team at 972-591-8075."
 
     def add_footer(self, reply: str, prop: PropertyRecord | None) -> str:
+        normalized_reply = normalize(reply)
+        if normalized_reply.startswith("the entry code is 1975"):
+            return reply
         footer = self.footer_for_property(prop)
         if not footer:
             return reply
-        if footer.lower() in normalize(reply):
+        if footer.lower() in normalized_reply:
             return reply
         return f"{reply} {footer}"
 
