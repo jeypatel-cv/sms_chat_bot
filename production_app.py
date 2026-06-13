@@ -1022,9 +1022,9 @@ class ConversationBrain:
                 return (
                     f"The entry code is 1975. If that does not work, please contact the property manager at {manager_phone}."
                 )
-            return "The entry code is 1975. If that does not work, please contact the property manager."
+            return "The entry code is 1975. If that does not work, please contact the leasing team at 972-591-8075."
         if any(word in normalized for word in ["contact", "manager", "phone", "email", "number"]):
-            return self.footer_for_property(prop)
+            return self.contact_details_for_property(prop)
         if any(word in normalized for word in ["available from", "move in", "move-in", "when available"]):
             return f"{prop.name} is available from {available_from}."
         if any(word in normalized for word in ["rent", "price", "cost", "how much"]):
@@ -1059,8 +1059,17 @@ class ConversationBrain:
         if prop is None:
             return "For more details, call the leasing team at 972-591-8075."
 
-        manager_email = prop.manager_email.strip()
         manager_phone = prop.manager_phone.strip()
+        if manager_phone:
+            return f"For more details, call {manager_phone}."
+        return "For more details, call the leasing team at 972-591-8075."
+
+    def contact_details_for_property(self, prop: PropertyRecord | None) -> str:
+        if prop is None:
+            return "For more details, call the leasing team at 972-591-8075."
+
+        manager_phone = prop.manager_phone.strip()
+        manager_email = prop.manager_email.strip()
         if manager_phone and manager_email:
             return f"For more details, call {manager_phone} or email {manager_email}."
         if manager_phone:
