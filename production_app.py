@@ -668,9 +668,12 @@ class ConversationBrain:
         compact_text = compact(text)
         if self.looks_like_new_property_reference(text):
             return True
-        if re.search(r"\b\d+\b", text) and any(term in normalized for term in {"address", "property", "listing", "home", "house", "unit"}):
+        if re.search(r"\b\d+\b", text) and any(term in normalized for term in {"address", "listing", "home", "house", "unit"}):
             return True
-        if re.search(r"\b\d+\s+[a-z0-9]+", compact_text):
+        if re.search(
+            r"\b\d+\s+[a-z0-9]+\s+(?:st|street|rd|road|dr|drive|ln|lane|ave|avenue|blvd|boulevard|ct|court|cir|circle|trl|trail|way|pkwy|parkway|hwy|highway|loop)\b",
+            compact_text,
+        ):
             return True
         return False
 
