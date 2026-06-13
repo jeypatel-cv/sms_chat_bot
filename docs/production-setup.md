@@ -33,6 +33,7 @@ See [render-free-deployment.md](render-free-deployment.md) and [render.yaml](ren
 Set:
 - `GOOGLE_SHEET_ID` if you want to override the default sheet ID
 - `GOOGLE_SHEET_TAB`
+- `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_APPLICATION_CREDENTIALS_JSON`
 - `PYTHON_VERSION=3.13.5` if you want to pin the runtime on Render
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`

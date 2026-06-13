@@ -133,12 +133,12 @@ If you have a raw remote export, you can use:
 - `PROPERTIES_SOURCE_URL=https://...`
 - `PROPERTIES_SOURCE_FORMAT=csv` or `json`
 
-If you are switching to Google Sheets now, remove:
-- `PROPERTIES_CSV_PATH`
+If you are switching to Google Sheets now, keep `PROPERTIES_CSV_PATH` only if you want CSV fallback.
 
 And add:
 - `GOOGLE_SHEET_ID=18b9gxA8GoC_-cpmjr-nG9ze2wG5NAfWWxhlg5MCfM7k`
 - `GOOGLE_SHEET_TAB=ChatBotClient`
+- `GOOGLE_APPLICATION_CREDENTIALS` or `GOOGLE_APPLICATION_CREDENTIALS_JSON`
 - `MESSAGE_LOG_TO_CONSOLE=true`
 - `MESSAGE_LOG_TO_APPS_SCRIPT=true`
 - `MESSAGE_LOG_APPS_SCRIPT_URL=https://script.google.com/macros/s/.../exec`

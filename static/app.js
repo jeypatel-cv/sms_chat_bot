@@ -155,8 +155,18 @@ function includesAny(text, terms) {
 }
 
 function pickSmokeProperty(items) {
-  const liveProperty = items.find((p) => typeof p.property_id === "string" && p.property_id.trim().length > 0 && p.address);
-  return liveProperty || items[0] || null;
+  const candidates = items.filter(
+    (p) =>
+      typeof p.property_id === "string" &&
+      p.property_id.trim().length > 0 &&
+      typeof p.address === "string" &&
+      p.address.trim().length > 0
+  );
+  if (candidates.length === 0) {
+    return items[0] || null;
+  }
+  const index = Math.floor(Math.random() * candidates.length);
+  return candidates[index];
 }
 
 function hasCity(items, city) {
@@ -212,7 +222,7 @@ async function runSmokeTest(auto = false) {
       exact.reply.length > 0 &&
       includesAny(exact.reply, [sample.name, sample.address, sample.property_id]);
     renderSmokeResult(
-      `Exact address lookup for ${sample.address}`,
+      `Exact address lookup for ${sample.address} (random sample)`,
       exactOk,
       `intent=${exact.intent || "-"} | reply=${exact.reply || "-"}`
     );

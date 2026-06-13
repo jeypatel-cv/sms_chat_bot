@@ -663,6 +663,17 @@ class ConversationBrain:
                 return prop
         return None
 
+    def _looks_like_address_query(self, text: str) -> bool:
+        normalized = normalize(text)
+        compact_text = compact(text)
+        if self.looks_like_new_property_reference(text):
+            return True
+        if re.search(r"\b\d+\b", text) and any(term in normalized for term in {"address", "property", "listing", "home", "house", "unit"}):
+            return True
+        if re.search(r"\b\d+\s+[a-z0-9]+", compact_text):
+            return True
+        return False
+
     def load_properties(self) -> list[PropertyRecord]:
         return self.property_store.load()
 
@@ -897,6 +908,7 @@ class ConversationBrain:
         properties = properties or self.load_properties()
         normalized = normalize(text)
         compact_text = compact(text)
+        address_like_query = self._looks_like_address_query(text)
         city_hint = self.detect_city(text, properties)
         tokens_count = len(tokens(text))
         area_only_query = bool(city_hint) and tokens_count <= 3 and not any(ch.isdigit() for ch in text)
@@ -911,8 +923,9 @@ class ConversationBrain:
             street_tokens = tokens(street)
             input_tokens = tokens(text)
             number_match = re.match(r"^\d+", street_text)
-            input_number_match = re.match(r"^\d+", compact_text)
+            input_number_match = re.search(r"\b\d+\b", compact_text)
             score = 0
+            street_ratio = SequenceMatcher(None, street_text, compact_text).ratio() if street_text and compact_text else 0.0
 
             if street_text and street_text in compact_text:
                 return 100, "exact"
@@ -924,11 +937,25 @@ class ConversationBrain:
             if overlap:
                 score += len(overlap) * 20
             if number_match and input_number_match and number_match.group(0) == input_number_match.group(0):
-                score += 40
+                score += 35
+            elif number_match and input_number_match and number_match.group(0) != input_number_match.group(0):
+                score -= 20
             if street_tokens and input_tokens and (street_tokens <= input_tokens or input_tokens <= street_tokens):
-                score += 25
+                score += 20
+            if street_ratio >= 0.9:
+                score += 30
+            elif street_ratio >= 0.84 and overlap:
+                score += 15
+            elif street_ratio >= 0.8 and len(overlap) >= 2:
+                score += 10
+            if prop.city and normalize(prop.city) in normalized:
+                score += 6
+            address_zip = re.search(r"\b\d{5}\b", prop.address)
+            if address_zip and address_zip.group(0) in normalized:
+                score += 6
 
-            if score >= 40:
+            partial_threshold = 45 if address_like_query or any(term in normalized for term in {"code", "entry code", "access code", "gate code", "lock code", "door code"}) else 55
+            if score >= partial_threshold:
                 return score, "partial"
             return 0, None
 
@@ -937,12 +964,16 @@ class ConversationBrain:
         best_match_type: str | None = None
 
         for prop in properties:
+            property_id_text = prop.property_id.lower()
             candidates = [
-                prop.property_id.lower(),
                 prop.address.lower(),
                 street_line(prop.address).lower(),
                 prop.name.lower(),
             ]
+            if property_id_text and re.search(rf"\b{re.escape(property_id_text)}\b", normalized):
+                session["property_id"] = prop.property_id
+                session["last_match_type"] = "exact"
+                return prop, "exact"
             if any(candidate and candidate in normalized for candidate in candidates):
                 session["property_id"] = prop.property_id
                 session["last_match_type"] = "exact"
@@ -959,12 +990,15 @@ class ConversationBrain:
             session["last_match_type"] = best_match_type
             return best_prop, best_match_type
 
-        if self.looks_like_new_property_reference(text):
+        if address_like_query:
             session["last_match_type"] = None
-            return None, None
+            return None, "address_like"
 
         property_id = session.get("property_id")
         if property_id:
+            if self.looks_like_explicit_property_reference(text):
+                session["last_match_type"] = None
+                return None, None
             if not self.looks_like_followup_question(text):
                 session["last_match_type"] = None
                 return None, None
@@ -1077,7 +1111,12 @@ class ConversationBrain:
         reply = ""
         intent = "unknown"
 
-        if prop is None and session.get("property_id") and any(term in normalized for term in detail_terms + code_terms):
+        if (
+            prop is None
+            and session.get("property_id")
+            and not self._looks_like_address_query(text)
+            and any(term in normalized for term in detail_terms + code_terms)
+        ):
             prop = self._session_property(session, properties)
             if prop is not None:
                 match_type = "session"
@@ -1119,51 +1158,58 @@ class ConversationBrain:
             )
             intent = "human_handoff"
         elif prop is None:
-            city, city_matches = self.find_city_matches(text, properties)
-            budget, budget_matches = self.find_budget_matches(text, properties)
-            if city and budget is not None:
-                city_budget_matches = [
-                    prop
-                    for prop in city_matches
-                    if prop.rent_per_month is not None and prop.rent_per_month <= budget
-                ]
-                if city_budget_matches:
-                    city_budget_matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
-                    reply = self.add_footer(
-                        self.list_properties_reply(city_budget_matches, f"{city} under ${int(budget):,}"),
-                        None,
-                    )
-                else:
-                    reply = self.add_footer(f"I could not find any properties in {city} under ${int(budget):,}.", None)
-                intent = "budget_list"
-            elif city_matches:
-                reply = self.add_footer(self.list_properties_reply(city_matches, city), None)
-                intent = "area_list"
+            if match_type == "address_like":
+                reply = self.add_footer(
+                    "I could not find that property. Please send the full address or area, and I'll narrow it down.",
+                    None,
+                )
+                intent = "clarify_property"
             else:
-                if budget_matches:
-                    reply = self.add_footer(
-                        self.list_properties_reply(budget_matches, f"${int(budget):,} budget"),
-                        None,
-                    )
+                city, city_matches = self.find_city_matches(text, properties)
+                budget, budget_matches = self.find_budget_matches(text, properties)
+                if city and budget is not None:
+                    city_budget_matches = [
+                        prop
+                        for prop in city_matches
+                        if prop.rent_per_month is not None and prop.rent_per_month <= budget
+                    ]
+                    if city_budget_matches:
+                        city_budget_matches.sort(key=lambda prop: (prop.rent_per_month is None, prop.rent_per_month or 0, prop.name))
+                        reply = self.add_footer(
+                            self.list_properties_reply(city_budget_matches, f"{city} under ${int(budget):,}"),
+                            None,
+                        )
+                    else:
+                        reply = self.add_footer(f"I could not find any properties in {city} under ${int(budget):,}.", None)
                     intent = "budget_list"
+                elif city_matches:
+                    reply = self.add_footer(self.list_properties_reply(city_matches, city), None)
+                    intent = "area_list"
                 else:
-                    reply = self.add_footer(
-                        (
-                            "Which area are you looking to rent, like Allen, Frisco, or Plano? "
-                            "Or send your max budget or the property address."
-                        ),
-                        None,
-                    )
-                    intent = "clarify_property"
-            if intent == "clarify_property" and session.get("property_id") and any(
-                term in normalized for term in detail_terms + code_terms
-            ):
-                session_prop = self._session_property(session, properties)
-                if session_prop is not None:
-                    prop = session_prop
-                    match_type = "session"
-                    intent = "property_qna"
-                    reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
+                    if budget_matches:
+                        reply = self.add_footer(
+                            self.list_properties_reply(budget_matches, f"${int(budget):,} budget"),
+                            None,
+                        )
+                        intent = "budget_list"
+                    else:
+                        reply = self.add_footer(
+                            (
+                                "Which area are you looking to rent, like Allen, Frisco, or Plano? "
+                                "Or send your max budget or the property address."
+                            ),
+                            None,
+                        )
+                        intent = "clarify_property"
+                if intent == "clarify_property" and session.get("property_id") and not self._looks_like_address_query(text) and any(
+                    term in normalized for term in detail_terms + code_terms
+                ):
+                    session_prop = self._session_property(session, properties)
+                    if session_prop is not None:
+                        prop = session_prop
+                        match_type = "session"
+                        intent = "property_qna"
+                        reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
         elif match_type == "partial":
             if any(term in normalized for term in property_info_terms):
                 reply = self.add_footer(self.answer_property_question(prop, normalized), prop)
