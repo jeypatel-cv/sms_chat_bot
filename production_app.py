@@ -1116,6 +1116,8 @@ class ConversationBrain:
             and not self._looks_like_address_query(text)
             and not self.looks_like_explicit_property_reference(text)
         ):
+            session["property_id"] = None
+            session["last_match_type"] = None
             city, city_matches = self.find_city_matches(text, properties)
             budget, budget_matches = self.find_budget_matches(text, properties)
             if city and budget is not None:
@@ -1152,7 +1154,7 @@ class ConversationBrain:
                 "incoming": text,
                 "reply": reply,
                 "intent": intent,
-                "property_id": session.get("property_id"),
+                "property_id": None,
             }
             self.history.setdefault(phone, []).append(message)
             return message
