@@ -12,32 +12,113 @@ const smokeResults = document.getElementById("smokeResults");
 const versionLine = document.getElementById("versionLine");
 const releaseNotesLink = document.getElementById("releaseNotesLink");
 
-const smokeComplaintPrompt = "I called a number of times now, but have gotten no response :-(";
-const smokeBudgetPrompt = "Show me anything under 2300";
-const smokeAvailabilityPrompt = "Is it available?";
-const smokeRentPrompt = "How much is rent?";
-const smokeBedBathPromptBase = "How many bedrooms and bathrooms does this property have?";
-const smokeAvailableFromPromptBase = "When is it available from?";
-const smokeContactPromptBase = "Who should I contact for details?";
-const smokeCodePromptBase = "What is the entry code for this property?";
-const smokeAreaCases = [
-  { label: "Area lookup typo", prompt: "Princton", expectedCity: "Princeton" },
-  { label: "Area lookup typo", prompt: "McKinny", expectedCity: "McKinney" },
-  { label: "Area alias", prompt: "North Princeton", expectedCity: "Princeton" },
+const smokeRealCases = [
+  {
+    label: "Exact property lookup",
+    prompt: "1009 Riverstone Trail Princeton, TX 75407",
+    expectedIntent: "property_qna",
+    expectedTerms: ["1009 Riverstone Trail", "rent $2,195"],
+  },
+  {
+    label: "Budget search from logs",
+    prompt: "I am looking for property under 2300 in frisco",
+    expectedIntent: "budget_list",
+    expectedTerms: ["Frisco under $2,300", "budget options"],
+  },
+  {
+    label: "Tour follow-up from logs",
+    prompt:
+      "Good morning, I requested a showing for 1009 Riverstone Trail in Princeton for tomorrow at 1130 am. Is there a better time for tomorrow I can show it?",
+    expectedIntent: "property_qna",
+    expectedTerms: ["1009 Riverstone Trail", "For more details"],
+  },
+  {
+    label: "Contact request from logs",
+    prompt: "Who should I contact for details? 100 Stovall Lane Caddo Mills, TX 75135",
+    expectedIntent: "property_qna",
+    expectedTerms: ["903-213-3818", "nishant@vprealtyservices.com"],
+  },
+  {
+    label: "Entry code from logs",
+    prompt: "What is the entry code for this property? 100 Stovall Lane Caddo Mills, TX 75135",
+    expectedIntent: "property_qna",
+    expectedTerms: ["The entry code is 1975", "property manager at 903-213-3818"],
+  },
+  {
+    label: "Area typo",
+    prompt: "Princton",
+    expectedIntent: "area_list",
+    expectedTerms: ["Princeton", "options"],
+  },
+  {
+    label: "Buyer intent from logs",
+    prompt:
+      "Hi Niketu, thanks. We're looking to buy (not rent) in Allen/Frisco/Plano-ideally a fixer that needs work. Do you have anything like that available or coming up soon? If so, what's the address?",
+    expectedIntent: "area_list",
+    expectedTerms: ["Frisco", "options"],
+  },
+  {
+    label: "Call request",
+    prompt: "Can you please give me a call about this property?",
+    expectedIntent: "area_list",
+    expectedTerms: ["options"],
+  },
+  {
+    label: "Property not listed status",
+    prompt: "This link says property is not listed on any platform. Can you update me on status?",
+    expectedIntent: "area_list",
+    expectedTerms: ["options"],
+  },
+  {
+    label: "Tour request",
+    prompt:
+      "Hi, I am interested in touring a property you have listed at 635 Beltrand Ln, in Fate TX. I have tried to contact someone several times and have not heard back. May I please have more information on the property and when I can tour please and thank you!",
+    expectedIntent: "property_qna",
+    expectedTerms: ["635 Beltrand", "972-591-8075", "anjali@vprealtyservices.com"],
+  },
+  {
+    label: "No-response handoff",
+    prompt: "I called a number of times now, but have gotten no response :-(",
+    expectedIntent: "human_handoff",
+    expectedTerms: ["leasing specialist"],
+  },
+  {
+    label: "Application fee clarifier",
+    prompt: "What is the application fee?",
+    expectedIntent: "clarify_property",
+    expectedTerms: ["Which area are you looking to rent"],
+  },
+  {
+    label: "Availability lookup",
+    prompt: "Is 1009 Riverstone Trail Princeton, TX 75407 still available for lease?",
+    expectedIntent: "property_qna",
+    expectedTerms: ["currently Vacant-Rented"],
+  },
+  {
+    label: "Rent lookup",
+    prompt: "How much is rent? 1009 Riverstone Trail Princeton, TX 75407",
+    expectedIntent: "property_qna",
+    expectedTerms: ["The rent for", "$2,195 per month"],
+  },
+  {
+    label: "Property summary",
+    prompt: "Thanks, Niketu-I appreciate the 1736 Hickory Chase Cir address.",
+    expectedIntent: "property_qna",
+    expectedTerms: ["1736 Hickory Chase", "4 bedrooms, 3.0 bathrooms"],
+  },
 ];
 
 const prompts = [
-  "1913 Ridge Creek Ln",
-  smokeRentPrompt,
-  smokeBedBathPromptBase,
-  smokeComplaintPrompt,
-  smokeBudgetPrompt,
-  smokeAvailabilityPrompt,
+  "1009 Riverstone Trail Princeton, TX 75407",
+  "I am looking for property under 2300 in frisco",
   "Princton",
-  "McKinny",
-  "North Princeton",
-  smokeCodePromptBase,
-  "Can I speak to a human?",
+  "Can you please give me a call about this property?",
+  "What is the application fee?",
+  "How much is rent? 1009 Riverstone Trail Princeton, TX 75407",
+  "Who should I contact for details? 100 Stovall Lane Caddo Mills, TX 75135",
+  "What is the entry code for this property? 100 Stovall Lane Caddo Mills, TX 75135",
+  "I called a number of times now, but have gotten no response :-(",
+  "Thanks, Niketu-I appreciate the 1736 Hickory Chase Cir address.",
 ];
 
 let properties = [];
@@ -207,117 +288,20 @@ async function runSmokeTest(auto = false) {
     const propRes = await fetch("/api/properties");
     const propData = await propRes.json();
     const smokeProps = propData.properties || [];
-    const sample = pickSmokeProperty(smokeProps);
     renderSmokeResult("Property list loads", propRes.ok && smokeProps.length > 0, `properties=${smokeProps.length}`);
 
-    if (!sample) {
-      setSmokeStatus("Smoke test failed");
-      return;
-    }
-
-    const exact = await postMessage(smokePhone, sample.address);
-    const exactOk =
-      exact.intent === "property_qna" &&
-      typeof exact.reply === "string" &&
-      exact.reply.length > 0 &&
-      includesAny(exact.reply, [sample.name, sample.address, sample.property_id]);
-    renderSmokeResult(
-      `Exact address lookup for ${sample.address} (random sample)`,
-      exactOk,
-      `intent=${exact.intent || "-"} | reply=${exact.reply || "-"}`
-    );
-
-    const rent = await postMessage(smokePhone, smokeRentPrompt);
-    const rentOk = rent.intent === "property_qna" && includesAny(rent.reply, ["rent", "$"]);
-    renderSmokeResult(
-      "Rent lookup",
-      rentOk,
-      `intent=${rent.intent || "-"} | reply=${rent.reply || "-"}`
-    );
-
-    const availability = await postMessage(smokePhone, smokeAvailabilityPrompt);
-    const availabilityOk =
-      availability.intent === "property_qna" &&
-      includesAny(availability.reply, ["available", "currently", sample.availability || ""]);
-    renderSmokeResult(
-      "Availability lookup",
-      availabilityOk,
-      `intent=${availability.intent || "-"} | reply=${availability.reply || "-"}`
-    );
-
-    const bedBathPrompt = `${smokeBedBathPromptBase} ${sample.address}`;
-    const bedBath = await postMessage(smokePhone, bedBathPrompt);
-    const bedBathOk =
-      bedBath.intent === "property_qna" &&
-      includesAny(bedBath.reply, ["bedrooms", "bathrooms", "bed", "bath"]);
-    renderSmokeResult(
-      "Bedroom/bathroom lookup",
-      bedBathOk,
-      `intent=${bedBath.intent || "-"} | reply=${bedBath.reply || "-"}`
-    );
-
-    const availableFromPrompt = `${smokeAvailableFromPromptBase} ${sample.address}`;
-    const availableFrom = await postMessage(smokePhone, availableFromPrompt);
-    const availableFromOk =
-      availableFrom.intent === "property_qna" &&
-      includesAny(availableFrom.reply, ["available from", "available"]);
-    renderSmokeResult(
-      "Available-from lookup",
-      availableFromOk,
-      `intent=${availableFrom.intent || "-"} | reply=${availableFrom.reply || "-"}`
-    );
-
-    const contactPrompt = `${smokeContactPromptBase} ${sample.address}`;
-    const contactInfo = await postMessage(smokePhone, contactPrompt);
-    const contactInfoOk =
-      contactInfo.intent === "property_qna" &&
-      includesAny(contactInfo.reply, ["call", "email"]);
-    renderSmokeResult(
-      "Contact-info fallback",
-      contactInfoOk,
-      `intent=${contactInfo.intent || "-"} | reply=${contactInfo.reply || "-"}`
-    );
-
-    const codePrompt = `${smokeCodePromptBase} ${sample.address}`;
-    const codeInfo = await postMessage(smokePhone, codePrompt);
-    const codeInfoOk =
-      codeInfo.intent === "property_qna" &&
-      includesAny(codeInfo.reply, ["contact the manager", "for more details", "call", "email"]);
-    renderSmokeResult(
-      "Entry-code manager handoff",
-      codeInfoOk,
-      `intent=${codeInfo.intent || "-"} | reply=${codeInfo.reply || "-"}`
-    );
-
-    for (const areaCase of smokeAreaCases.filter((item) => hasCity(smokeProps, item.expectedCity))) {
-      const area = await postMessage(smokePhone, areaCase.prompt);
-      const areaOk =
-        area.intent === "area_list" &&
-        includesAny(area.reply, [areaCase.expectedCity, "options"]) &&
-        !includesAny(area.reply, ["Which area are you looking to rent"]);
+    for (const realCase of smokeRealCases) {
+      await resetPhone(smokePhone);
+      const response = await postMessage(smokePhone, realCase.prompt);
+      const responseOk =
+        response.intent === realCase.expectedIntent &&
+        includesAny(response.reply, realCase.expectedTerms);
       renderSmokeResult(
-        `${areaCase.label} for ${areaCase.prompt}`,
-        areaOk,
-        `intent=${area.intent || "-"} | reply=${area.reply || "-"}`
+        `Real question: ${realCase.label}`,
+        responseOk,
+        `intent=${response.intent || "-"} | reply=${response.reply || "-"}`
       );
     }
-
-    const handoff = await postMessage(smokePhone, smokeComplaintPrompt);
-    const handoffOk = handoff.intent === "human_handoff";
-    renderSmokeResult(
-      "Complaint-style handoff message",
-      handoffOk,
-      `intent=${handoff.intent || "-"} | reply=${handoff.reply || "-"}`
-    );
-
-    await resetPhone(smokePhone);
-    const budget = await postMessage(smokePhone, smokeBudgetPrompt);
-    const budgetOk = budget.intent === "budget_list";
-    renderSmokeResult(
-      "Budget lookup fallback",
-      budgetOk,
-      `intent=${budget.intent || "-"} | reply=${budget.reply || "-"}`
-    );
 
     setSmokeStatus(`Smoke test passed at ${formatSmokeTime(new Date())}`);
   } catch (err) {

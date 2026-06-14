@@ -127,7 +127,7 @@ PROPERTY_FIELD_ALIASES: dict[str, tuple[str, ...]] = {
     "manager_email": ("manager_email", "manager email", "email", "contact_email"),
     "manager_phone": ("manager_phone", "contact_phone", "phone", "manager phone"),
     "contact_owner": ("contact_owner", "leasing_owner", "owner_email"),
-    "contact_info": ("contact_info", "contact", "leasing_contact"),
+    "contact_info": ("contact", "contact_info", "leasing_contact"),
 }
 
 
@@ -1084,6 +1084,8 @@ class ConversationBrain:
     def add_footer(self, reply: str, prop: PropertyRecord | None) -> str:
         normalized_reply = normalize(reply)
         if normalized_reply.startswith("the entry code is 1975"):
+            return reply
+        if normalized_reply.startswith("for more details"):
             return reply
         footer = self.footer_for_property(prop)
         if not footer:
